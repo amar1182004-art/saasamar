@@ -22,9 +22,19 @@ module V1
 
         unless result
           throttle.record_failure!
+          ::Auth::AccountLockout.record_failure!(params[:email])
           return render json: { error: "invalid_credentials" }, status: :unauthorized
         end
 
+        if result.locked_until&.future?
+          response.set_header(
+            "Retry-After",
+            ::Auth::AccountLockout.retry_after(result.locked_until).to_s
+          )
+          return render json: { error: "account_locked" }, status: :locked
+        end
+
+        ::Auth::AccountLockout.record_success!(result.user_id)
         throttle.reset_success!
 
         if result.mfa_enabled
