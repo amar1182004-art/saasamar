@@ -79,6 +79,9 @@ jobs:
       - name: Verify identity, MFA, tenant authorization and sessions
         working-directory: crystell
         run: python3 scripts/identity_smoke.py
+      - name: Verify persistent account lockout
+        working-directory: crystell
+        run: python3 scripts/lockout_smoke.py
       - name: Verify tenant and permission boundaries
         working-directory: crystell
         run: |
