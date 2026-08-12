@@ -4,6 +4,7 @@ class User < ApplicationRecord
   has_many :memberships, dependent: :destroy
   has_many :tenants, through: :memberships
   has_many :sessions, dependent: :destroy
+  has_one :mfa_credential, dependent: :destroy
 
   normalizes :email, with: ->(email) { email.strip.downcase }
 
