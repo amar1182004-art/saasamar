@@ -52,7 +52,13 @@ module V1
 
       def destroy
         IdentityScope.with(Current.user.id) do
-          Current.session.update!(revoked_at: Time.current)
+          unless Current.session.revoked_at
+            Current.session.update!(revoked_at: Time.current)
+            SecurityAudit.record!(
+              "auth.session_revoked",
+              metadata: { session_id: Current.session.id, reason: "logout" }
+            )
+          end
         end
         head :no_content
       end
