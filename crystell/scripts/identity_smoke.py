@@ -162,7 +162,43 @@ second_session = request(
     },
     expected=201,
 )
-request("GET", "/v1/me", token=second_session["token"], expected=200)
+second_token = second_session["token"]
+request("GET", "/v1/me", token=second_token, expected=200)
+
+third_mfa_login = request(
+    "POST",
+    "/v1/auth/session",
+    {"email": EMAIL, "password": PASSWORD},
+    expected=428,
+)
+third_session = request(
+    "POST",
+    "/v1/auth/mfa/challenge",
+    {
+        "challenge_token": third_mfa_login["challenge_token"],
+        "recovery_code": recovery_codes[2],
+    },
+    expected=201,
+)
+third_token = third_session["token"]
+
+active_sessions = request(
+    "GET",
+    "/v1/security/sessions",
+    token=third_token,
+    expected=200,
+)["sessions"]
+assert len(active_sessions) >= 2
+assert sum(1 for session in active_sessions if session["current"]) == 1
+
+request(
+    "DELETE",
+    "/v1/security/sessions/others",
+    token=third_token,
+    expected=204,
+)
+request("GET", "/v1/me", token=second_token, expected=401)
+request("GET", "/v1/me", token=third_token, expected=200)
 
 throttle_email = f"missing-{UNIQUE}@example.test"
 for _ in range(8):
@@ -179,4 +215,4 @@ request(
     expected=429,
 )
 
-print("Identity, tenant isolation, throttling and MFA smoke test passed")
+print("Identity, tenant isolation, throttling, MFA and session management smoke test passed")
