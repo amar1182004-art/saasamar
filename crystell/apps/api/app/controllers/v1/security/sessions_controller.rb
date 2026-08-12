@@ -25,16 +25,28 @@ module V1
           session = Session.find_by(id: params[:id])
           return render json: { error: "session_not_found" }, status: :not_found unless session
 
-          session.update!(revoked_at: Time.current) unless session.revoked_at
+          unless session.revoked_at
+            session.update!(revoked_at: Time.current)
+            SecurityAudit.record!(
+              "auth.session_revoked",
+              metadata: { session_id: session.id, current: session.id == Current.session.id }
+            )
+          end
+
           head :no_content
         end
       end
 
       def revoke_others
         IdentityScope.with(Current.user.id) do
-          Session.active.where.not(id: Current.session.id).update_all(
+          revoked_count = Session.active.where.not(id: Current.session.id).update_all(
             revoked_at: Time.current,
             updated_at: Time.current
+          )
+
+          SecurityAudit.record!(
+            "auth.other_sessions_revoked",
+            metadata: { revoked_count: revoked_count, current_session_id: Current.session.id }
           )
         end
 
