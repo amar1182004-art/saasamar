@@ -9,5 +9,6 @@ module CrystellApi
     config.api_only = true
     config.time_zone = "Cairo"
     config.active_job.queue_adapter = :sidekiq
+    config.secret_key_base = ENV.fetch("SECRET_KEY_BASE", "development-only-change-me")
   end
 end
