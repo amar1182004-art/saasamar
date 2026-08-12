@@ -1,5 +1,9 @@
 # Phase 0 Status
 
+## Status: COMPLETE
+
+The final GitHub Actions matrix is green, including the full-stack smoke test.
+
 ## Completed
 
 - Isolated `crystell/` workspace.
@@ -20,9 +24,15 @@
 - Unified Makefile commands for setup, start, stop, logs and testing.
 - Full-stack smoke test covering health and readiness endpoints.
 - Crystell-specific GitHub Actions workflow covering Compose validation, container builds and full-stack smoke testing.
+- Internal Rails service hostname permitted only in development for container-to-container readiness checks.
+- Sidekiq dependency compatibility pinned to avoid runtime scheduler failure.
 
-## Exit criterion
+## Verification
 
-Phase 0 is complete when the latest GitHub Actions matrix is green after these changes.
+Web build: green.
+API build: green.
+AI build: green.
+Docker Compose validation: green.
+Full-stack smoke: green.
 
-Phase 1 must not begin before that final CI verification.
+Phase 1 may proceed.
