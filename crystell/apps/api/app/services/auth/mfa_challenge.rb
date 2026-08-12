@@ -6,6 +6,18 @@ module Auth
     TTL_SECONDS = ENV.fetch("MFA_CHALLENGE_TTL_SECONDS", "300").to_i
     MAX_ATTEMPTS = ENV.fetch("MFA_CHALLENGE_MAX_ATTEMPTS", "5").to_i
 
+    FAILURE_SCRIPT = <<~LUA.freeze
+      if redis.call('EXISTS', KEYS[1]) == 0 then
+        return -1
+      end
+
+      local attempts = redis.call('HINCRBY', KEYS[1], 'attempts', 1)
+      if attempts >= tonumber(ARGV[1]) then
+        redis.call('DEL', KEYS[1])
+      end
+      return attempts
+    LUA
+
     Result = Data.define(:token, :expires_in)
 
     def self.issue(user_id:)
@@ -13,8 +25,10 @@ module Auth
       key = redis_key(token)
 
       CRYSTELL_REDIS_POOL.with do |redis|
-        redis.hset(key, "user_id", user_id.to_s, "attempts", "0")
-        redis.expire(key, TTL_SECONDS)
+        redis.multi do |transaction|
+          transaction.hset(key, "user_id", user_id.to_s, "attempts", "0")
+          transaction.expire(key, TTL_SECONDS)
+        end
       end
 
       Result.new(token: token, expires_in: TTL_SECONDS)
@@ -28,10 +42,11 @@ module Auth
 
     def self.record_failure!(token)
       CRYSTELL_REDIS_POOL.with do |redis|
-        key = redis_key(token)
-        attempts = redis.hincrby(key, "attempts", 1)
-        redis.del(key) if attempts >= MAX_ATTEMPTS
-        attempts
+        redis.eval(
+          FAILURE_SCRIPT,
+          keys: [redis_key(token)],
+          argv: [MAX_ATTEMPTS]
+        )
       end
     end
 
