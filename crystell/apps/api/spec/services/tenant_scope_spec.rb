@@ -49,12 +49,25 @@ RSpec.describe TenantScope do
     end
   end
 
-  it "blocks cross-tenant writes even when application code supplies another tenant id" do
+  it "blocks cross-tenant writes at PostgreSQL even when application validations are bypassed" do
     expect do
       described_class.with(tenant_a_id) do
-        Store.create!(tenant_id: tenant_b_id, name: "Forbidden", slug: "forbidden")
+        connection = ActiveRecord::Base.connection
+        connection.execute(<<~SQL)
+          INSERT INTO stores (
+            id, tenant_id, name, slug, status, created_at, updated_at
+          ) VALUES (
+            gen_random_uuid(),
+            #{connection.quote(tenant_b_id)},
+            'Forbidden',
+            'forbidden',
+            'draft',
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
+          )
+        SQL
       end
-    end.to raise_error(ActiveRecord::StatementInvalid)
+    end.to raise_error(ActiveRecord::StatementInvalid, /row-level security|policy/i)
   end
 
   it "clears the tenant context after the scoped transaction" do
