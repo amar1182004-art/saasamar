@@ -5,11 +5,27 @@ module V1
       skip_before_action :authenticate_request!, only: :create
 
       def create
+        throttle = ::Auth::LoginThrottle.new(
+          email: params[:email],
+          ip_address: request.remote_ip
+        )
+
+        if throttle.blocked?
+          response.set_header("Retry-After", throttle.retry_after.to_s)
+          return render json: { error: "too_many_attempts" }, status: :too_many_requests
+        end
+
         result = ::Auth::PasswordAuthenticator.call(
           email: params[:email],
           password: params[:password]
         )
-        return render json: { error: "invalid_credentials" }, status: :unauthorized unless result
+
+        unless result
+          throttle.record_failure!
+          return render json: { error: "invalid_credentials" }, status: :unauthorized
+        end
+
+        throttle.reset_success!
 
         if result.mfa_enabled
           return render json: { error: "mfa_required" }, status: :precondition_required
