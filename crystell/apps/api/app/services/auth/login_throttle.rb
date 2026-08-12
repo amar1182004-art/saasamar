@@ -6,6 +6,14 @@ module Auth
     PAIR_LIMIT = ENV.fetch("LOGIN_MAX_PAIR_ATTEMPTS", "8").to_i
     IP_LIMIT = ENV.fetch("LOGIN_MAX_IP_ATTEMPTS", "60").to_i
 
+    INCREMENT_SCRIPT = <<~LUA.freeze
+      local value = redis.call('INCR', KEYS[1])
+      if value == 1 then
+        redis.call('EXPIRE', KEYS[1], ARGV[1])
+      end
+      return value
+    LUA
+
     def initialize(email:, ip_address:)
       @email = email.to_s.strip.downcase
       @ip_address = ip_address.to_s
@@ -49,9 +57,11 @@ module Auth
     end
 
     def increment_with_expiry(redis, key)
-      value = redis.incr(key)
-      redis.expire(key, WINDOW_SECONDS) if value == 1
-      value
+      redis.eval(
+        INCREMENT_SCRIPT,
+        keys: [key],
+        argv: [WINDOW_SECONDS]
+      )
     end
 
     def pair_key
