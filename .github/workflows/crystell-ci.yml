@@ -76,6 +76,9 @@ jobs:
       - name: Run health and readiness smoke tests
         working-directory: crystell
         run: sh scripts/smoke.sh
+      - name: Verify registration and session lifecycle
+        working-directory: crystell
+        run: python3 scripts/identity_smoke.py
       - name: Verify PostgreSQL tenant boundaries
         working-directory: crystell
         run: |
