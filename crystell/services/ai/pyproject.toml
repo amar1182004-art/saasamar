@@ -1,0 +1,16 @@
+[project]
+name = "crystell-ai"
+version = "0.1.0"
+description = "Isolated AI/ML service for Crystell"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.116,<1.0",
+  "uvicorn[standard]>=0.35,<1.0",
+  "pydantic>=2.11,<3.0",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
