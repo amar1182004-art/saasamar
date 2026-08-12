@@ -5,6 +5,7 @@ class AddMfaCredentials < ActiveRecord::Migration[8.0]
       t.text :encrypted_secret, null: false
       t.jsonb :recovery_code_digests, null: false, default: []
       t.datetime :confirmed_at
+      t.bigint :last_totp_at
       t.datetime :last_used_at
       t.timestamps
     end
