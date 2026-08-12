@@ -9,13 +9,15 @@ UNIQUE = uuid.uuid4().hex[:12]
 EMAIL = f"ci-{UNIQUE}@example.test"
 
 
-def request(method, path, payload=None, token=None, expected=200):
+def request(method, path, payload=None, token=None, expected=200, extra_headers=None):
     data = None
     headers = {"Content-Type": "application/json"}
     if payload is not None:
         data = json.dumps(payload).encode("utf-8")
     if token:
         headers["Authorization"] = f"Bearer {token}"
+    if extra_headers:
+        headers.update(extra_headers)
 
     req = urllib.request.Request(BASE_URL + path, data=data, headers=headers, method=method)
     try:
@@ -45,9 +47,31 @@ registration = request(
     expected=201,
 )
 registration_token = registration["token"]
+tenant_id = registration["tenant_id"]
+store_id = registration["store_id"]
 
 me = request("GET", "/v1/me", token=registration_token, expected=200)
 assert me["email"] == EMAIL
+
+stores = request(
+    "GET",
+    "/v1/stores",
+    token=registration_token,
+    extra_headers={"X-Crystell-Tenant": tenant_id},
+    expected=200,
+)
+assert stores["tenant_id"] == tenant_id
+assert stores["role"] == "owner"
+assert [store["id"] for store in stores["stores"]] == [store_id]
+
+request(
+    "GET",
+    "/v1/stores",
+    token=registration_token,
+    extra_headers={"X-Crystell-Tenant": str(uuid.uuid4())},
+    expected=403,
+)
+request("GET", "/v1/stores", token=registration_token, expected=403)
 
 request("DELETE", "/v1/auth/session", token=registration_token, expected=204)
 request("GET", "/v1/me", token=registration_token, expected=401)
@@ -61,4 +85,4 @@ login = request(
 login_token = login["token"]
 request("GET", "/v1/me", token=login_token, expected=200)
 
-print("Identity smoke test passed")
+print("Identity and tenant authorization smoke test passed")
