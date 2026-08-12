@@ -81,8 +81,9 @@ class AddPersistentLoginLockout < ActiveRecord::Migration[8.0]
     execute "REVOKE ALL ON FUNCTION crystell.record_login_success(uuid) FROM PUBLIC"
     execute "GRANT EXECUTE ON FUNCTION crystell.record_login_success(uuid) TO crystell_runtime"
 
+    execute "DROP FUNCTION IF EXISTS crystell.user_for_password_auth(text)"
     execute <<~SQL
-      CREATE OR REPLACE FUNCTION crystell.user_for_password_auth(p_email text)
+      CREATE FUNCTION crystell.user_for_password_auth(p_email text)
       RETURNS TABLE(
         id uuid,
         email text,
@@ -102,14 +103,21 @@ class AddPersistentLoginLockout < ActiveRecord::Migration[8.0]
         LIMIT 1
       $$
     SQL
+    execute "REVOKE ALL ON FUNCTION crystell.user_for_password_auth(text) FROM PUBLIC"
+    execute "GRANT EXECUTE ON FUNCTION crystell.user_for_password_auth(text) TO crystell_runtime"
   end
 
   def down
     execute "DROP FUNCTION IF EXISTS crystell.record_login_success(uuid)"
     execute "DROP FUNCTION IF EXISTS crystell.record_login_failure(text,integer,integer)"
+    execute "DROP FUNCTION IF EXISTS crystell.user_for_password_auth(text)"
+
+    remove_column :users, :locked_until
+    remove_column :users, :last_failed_login_at
+    remove_column :users, :failed_login_count
 
     execute <<~SQL
-      CREATE OR REPLACE FUNCTION crystell.user_for_password_auth(p_email text)
+      CREATE FUNCTION crystell.user_for_password_auth(p_email text)
       RETURNS TABLE(
         id uuid,
         email text,
@@ -128,9 +136,7 @@ class AddPersistentLoginLockout < ActiveRecord::Migration[8.0]
         LIMIT 1
       $$
     SQL
-
-    remove_column :users, :locked_until
-    remove_column :users, :last_failed_login_at
-    remove_column :users, :failed_login_count
+    execute "REVOKE ALL ON FUNCTION crystell.user_for_password_auth(text) FROM PUBLIC"
+    execute "GRANT EXECUTE ON FUNCTION crystell.user_for_password_auth(text) TO crystell_runtime"
   end
 end
