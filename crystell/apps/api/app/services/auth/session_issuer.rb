@@ -12,13 +12,20 @@ module Auth
       expires_at = ENV.fetch("SESSION_TTL_HOURS", "168").to_i.hours.from_now
 
       session = IdentityScope.with(user_id) do
-        Session.create!(
+        created_session = Session.create!(
           user_id: user_id,
           token_digest: token_digest,
           expires_at: expires_at,
           ip_hash: hash_ip(ip_address),
           user_agent: user_agent.to_s.first(512).presence
         )
+
+        SecurityAudit.record!(
+          "auth.session_created",
+          metadata: { session_id: created_session.id }
+        )
+
+        created_session
       end
 
       Result.new(token: token, session_id: session.id, expires_at: expires_at)
