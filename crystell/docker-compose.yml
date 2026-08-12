@@ -56,8 +56,21 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://crystell_app:change-me-app-local-only@postgres:5432/crystell_development}
       MIGRATION_DATABASE_URL: ${MIGRATION_DATABASE_URL:-postgresql://crystell_admin:change-me-admin-local-only@postgres:5432/crystell_development}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REDIS_POOL_SIZE: ${REDIS_POOL_SIZE:-10}
+      REDIS_POOL_TIMEOUT: ${REDIS_POOL_TIMEOUT:-1}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
       SECRET_KEY_BASE: ${APP_SECRET_KEY_BASE:-change-me-local-only}
+      SESSION_METADATA_KEY: ${SESSION_METADATA_KEY:-change-me-session-metadata-local-only}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-168}
+      LOGIN_THROTTLE_KEY: ${LOGIN_THROTTLE_KEY:-change-me-login-throttle-local-only}
+      LOGIN_THROTTLE_WINDOW_SECONDS: ${LOGIN_THROTTLE_WINDOW_SECONDS:-900}
+      LOGIN_MAX_PAIR_ATTEMPTS: ${LOGIN_MAX_PAIR_ATTEMPTS:-8}
+      LOGIN_MAX_IP_ATTEMPTS: ${LOGIN_MAX_IP_ATTEMPTS:-60}
+      MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY:-change-me-mfa-encryption-local-only}
+      MFA_RECOVERY_PEPPER: ${MFA_RECOVERY_PEPPER:-change-me-mfa-recovery-local-only}
+      MFA_CHALLENGE_TTL_SECONDS: ${MFA_CHALLENGE_TTL_SECONDS:-300}
+      MFA_CHALLENGE_MAX_ATTEMPTS: ${MFA_CHALLENGE_MAX_ATTEMPTS:-5}
+      TENANT_CONTEXT_HEADER: ${TENANT_CONTEXT_HEADER:-X-Crystell-Tenant}
       AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai:8000}
     ports:
       - "3001:3001"
@@ -82,7 +95,13 @@ services:
       RAILS_ENV: development
       DATABASE_URL: ${DATABASE_URL:-postgresql://crystell_app:change-me-app-local-only@postgres:5432/crystell_development}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REDIS_POOL_SIZE: ${REDIS_POOL_SIZE:-10}
+      REDIS_POOL_TIMEOUT: ${REDIS_POOL_TIMEOUT:-1}
       SECRET_KEY_BASE: ${APP_SECRET_KEY_BASE:-change-me-local-only}
+      SESSION_METADATA_KEY: ${SESSION_METADATA_KEY:-change-me-session-metadata-local-only}
+      LOGIN_THROTTLE_KEY: ${LOGIN_THROTTLE_KEY:-change-me-login-throttle-local-only}
+      MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY:-change-me-mfa-encryption-local-only}
+      MFA_RECOVERY_PEPPER: ${MFA_RECOVERY_PEPPER:-change-me-mfa-recovery-local-only}
       AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai:8000}
     depends_on:
       api:
