@@ -6,6 +6,9 @@ Rails.application.routes.draw do
     namespace :auth do
       resource :registration, only: :create
       resource :session, only: %i[create destroy]
+      post "/mfa/setup", to: "mfa#setup"
+      post "/mfa/confirm", to: "mfa#confirm"
+      post "/mfa/challenge", to: "mfa#challenge"
     end
 
     get "/me", to: "me#show"
