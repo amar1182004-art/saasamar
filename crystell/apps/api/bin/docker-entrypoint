@@ -2,7 +2,7 @@
 set -eu
 
 if [ "${RAILS_ENV:-development}" != "test" ]; then
-  bundle exec rails db:prepare
+  ./bin/rails db:prepare
 fi
 
 exec "$@"
