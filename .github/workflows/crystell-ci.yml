@@ -76,16 +76,18 @@ jobs:
       - name: Run health and readiness smoke tests
         working-directory: crystell
         run: sh scripts/smoke.sh
-      - name: Verify registration and session lifecycle
+      - name: Verify identity, MFA, tenant authorization and sessions
         working-directory: crystell
         run: python3 scripts/identity_smoke.py
-      - name: Verify PostgreSQL tenant boundaries
+      - name: Verify tenant and permission boundaries
         working-directory: crystell
         run: |
           docker compose exec -T \
             -e RAILS_ENV=test \
             -e DATABASE_URL=postgresql://crystell_app:change-me-app-local-only@postgres:5432/crystell_development \
-            api bundle exec rspec spec/services/tenant_scope_spec.rb
+            api bundle exec rspec \
+              spec/services/tenant_scope_spec.rb \
+              spec/services/tenant_permission_spec.rb
       - name: Print service logs on failure
         if: failure()
         working-directory: crystell
