@@ -144,14 +144,12 @@ class SecureIdentityTokenOperations < ActiveRecord::Migration[8.0]
       $$
     SQL
 
-    %w[
-      crystell.issue_identity_token(text,text,text,timestamp_without_time_zone)
-      crystell.consume_email_verification(text)
-      crystell.consume_password_reset(text,text)
-    ].each do |signature|
-      execute "REVOKE ALL ON FUNCTION #{signature} FROM PUBLIC"
-      execute "GRANT EXECUTE ON FUNCTION #{signature} TO crystell_runtime"
-    end
+    execute "REVOKE ALL ON FUNCTION crystell.issue_identity_token(text,text,text,timestamp without time zone) FROM PUBLIC"
+    execute "GRANT EXECUTE ON FUNCTION crystell.issue_identity_token(text,text,text,timestamp without time zone) TO crystell_runtime"
+    execute "REVOKE ALL ON FUNCTION crystell.consume_email_verification(text) FROM PUBLIC"
+    execute "GRANT EXECUTE ON FUNCTION crystell.consume_email_verification(text) TO crystell_runtime"
+    execute "REVOKE ALL ON FUNCTION crystell.consume_password_reset(text,text) FROM PUBLIC"
+    execute "GRANT EXECUTE ON FUNCTION crystell.consume_password_reset(text,text) TO crystell_runtime"
   end
 
   def down
