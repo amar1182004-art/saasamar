@@ -25,18 +25,24 @@ module Auth
         store_slug: store_slug
       )
 
-      digest = BCrypt::Password.create(password)
+      password_digest = BCrypt::Password.create(password).to_s
       connection = ActiveRecord::Base.connection
-      row = connection.select_one(<<~SQL.squish)
-        SELECT * FROM crystell.create_initial_account(
-          #{connection.quote(email)},
-          #{connection.quote(digest.to_s)},
-          #{connection.quote(tenant_name)},
-          #{connection.quote(tenant_slug)},
-          #{connection.quote(store_name)},
-          #{connection.quote(store_slug)}
-        )
-      SQL
+      binds = [
+        query_attribute("email", email),
+        query_attribute("password_digest", password_digest),
+        query_attribute("tenant_name", tenant_name),
+        query_attribute("tenant_slug", tenant_slug),
+        query_attribute("store_name", store_name),
+        query_attribute("store_slug", store_slug)
+      ]
+
+      row = connection.exec_query(
+        <<~SQL.squish,
+          SELECT * FROM crystell.create_initial_account($1, $2, $3, $4, $5, $6)
+        SQL
+        "CreateInitialAccount",
+        binds
+      ).first
 
       Result.new(
         user_id: row.fetch("user_id"),
@@ -48,6 +54,15 @@ module Auth
 
       raise
     end
+
+    def self.query_attribute(name, value)
+      ActiveRecord::Relation::QueryAttribute.new(
+        name,
+        value,
+        ActiveRecord::Type::String.new
+      )
+    end
+    private_class_method :query_attribute
 
     def self.validate!(email:, password:, tenant_name:, tenant_slug:, store_name:, store_slug:)
       raise ValidationError, "invalid email" unless email.match?(URI::MailTo::EMAIL_REGEXP)
