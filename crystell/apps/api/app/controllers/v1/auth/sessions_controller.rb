@@ -1,0 +1,40 @@
+module V1
+  module Auth
+    class SessionsController < ApplicationController
+      include Authentication
+      skip_before_action :authenticate_request!, only: :create
+
+      def create
+        result = ::Auth::PasswordAuthenticator.call(
+          email: params[:email],
+          password: params[:password]
+        )
+        return render json: { error: "invalid_credentials" }, status: :unauthorized unless result
+
+        if result.mfa_enabled
+          return render json: { error: "mfa_required" }, status: :precondition_required
+        end
+
+        issued = ::Auth::SessionIssuer.call(
+          user_id: result.user_id,
+          ip_address: request.remote_ip,
+          user_agent: request.user_agent
+        )
+
+        render json: {
+          token: issued.token,
+          token_type: "Bearer",
+          expires_at: issued.expires_at,
+          user: { id: result.user_id, email: result.email }
+        }, status: :created
+      end
+
+      def destroy
+        IdentityScope.with(Current.user.id) do
+          Current.session.update!(revoked_at: Time.current)
+        end
+        head :no_content
+      end
+    end
+  end
+end
