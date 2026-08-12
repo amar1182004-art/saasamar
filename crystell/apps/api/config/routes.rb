@@ -9,5 +9,6 @@ Rails.application.routes.draw do
     end
 
     get "/me", to: "me#show"
+    resources :stores, only: :index
   end
 end
