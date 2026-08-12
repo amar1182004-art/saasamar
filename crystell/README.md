@@ -22,15 +22,27 @@ Crystell is the new commerce SaaS platform being built in this repository. The e
 - MinIO API: `9000`
 - MinIO console: `9001`
 
-## Local startup
+## Local development
 
 ```bash
 cd crystell
-cp .env.example .env
-docker compose up --build
+make setup
+make up
+make smoke
 ```
 
-Health endpoints:
+Useful commands:
+
+```text
+make up       Start/rebuild the stack
+make down     Stop the stack
+make logs     Follow service logs
+make ps       Show service status
+make smoke    Run health/readiness checks
+make clean    Remove containers and local volumes
+```
+
+Liveness endpoints:
 
 ```text
 http://localhost:3000/api/health
@@ -38,15 +50,25 @@ http://localhost:3001/health
 http://localhost:8000/health
 ```
 
+Readiness endpoints:
+
+```text
+http://localhost:3000/api/ready
+http://localhost:3001/ready
+http://localhost:8000/ready
+```
+
+The Rails API runs `db:prepare` on startup. The readiness endpoint verifies PostgreSQL and Redis before the service is considered ready.
+
 ## Architecture principles
 
 1. Modular monolith for the commerce core.
 2. Multi-tenant isolation enforced in both application code and PostgreSQL RLS.
 3. Stateless web/API instances so the platform can scale horizontally.
 4. AI is isolated from the checkout/order critical path.
-5. No permanent local file storage.
+5. No permanent local file storage in production.
 6. Background work is queued and idempotent.
 7. Every sensitive operation is auditable.
 8. Production infrastructure is replaceable; business logic must not depend on a single hosting provider.
 
-See `docs/PHASES.md` and `docs/ARCHITECTURE.md` for the implementation plan.
+See `docs/PHASES.md`, `docs/ARCHITECTURE.md`, and `docs/PHASE_0_STATUS.md` for the implementation plan and status.
