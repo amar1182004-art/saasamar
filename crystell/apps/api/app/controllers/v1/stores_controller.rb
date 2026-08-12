@@ -4,6 +4,8 @@ module V1
     include TenantAuthorization
 
     def index
+      TenantPermission.require!(Current.membership, "stores.read")
+
       render json: {
         tenant_id: Current.tenant_id,
         role: Current.membership.role,
@@ -16,6 +18,8 @@ module V1
           }
         end
       }
+    rescue TenantPermission::ForbiddenError
+      render json: { error: "permission_forbidden" }, status: :forbidden
     end
   end
 end
