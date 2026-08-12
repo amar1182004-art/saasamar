@@ -23,6 +23,31 @@ jobs:
         working-directory: crystell
         run: docker compose --env-file .env.example config
 
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install web dependencies
+        working-directory: crystell/apps/web
+        run: npm install
+      - name: Build web
+        working-directory: crystell/apps/web
+        run: npm run build
+      - name: Build web container
+        working-directory: crystell/apps/web
+        run: docker build -t crystell-web:ci .
+
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API container
+        working-directory: crystell/apps/api
+        run: docker build -t crystell-api:ci .
+
   ai-service:
     runs-on: ubuntu-latest
     steps:
