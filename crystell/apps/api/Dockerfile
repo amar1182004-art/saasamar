@@ -6,9 +6,9 @@ WORKDIR /app
 COPY Gemfile ./
 RUN bundle install
 COPY . .
-RUN chmod +x ./bin/docker-entrypoint
+RUN chmod +x ./bin/docker-entrypoint ./bin/rails
 
 ENV RAILS_ENV=development
 EXPOSE 3001
 ENTRYPOINT ["./bin/docker-entrypoint"]
-CMD ["bundle", "exec", "rails", "server", "-b", "0.0.0.0", "-p", "3001"]
+CMD ["./bin/rails", "server", "-b", "0.0.0.0", "-p", "3001"]
