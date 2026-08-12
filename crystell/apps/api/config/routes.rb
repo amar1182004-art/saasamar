@@ -4,6 +4,7 @@ Rails.application.routes.draw do
 
   namespace :v1 do
     namespace :auth do
+      resource :registration, only: :create
       resource :session, only: %i[create destroy]
     end
 
