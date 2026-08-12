@@ -24,8 +24,11 @@ jobs:
       - name: Replace repository contents
         shell: bash
         run: |
+          cp .github/workflows/import-lastsaas.yml /tmp/import-lastsaas.yml
           find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
-          rsync -a --exclude='.git' /tmp/lastsaas/ ./
+          rsync -a --exclude='.git' --exclude='.github/workflows/***' /tmp/lastsaas/ ./
+          mkdir -p .github/workflows
+          cp /tmp/import-lastsaas.yml .github/workflows/import-lastsaas.yml
 
       - name: Commit imported source
         shell: bash
