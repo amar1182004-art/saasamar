@@ -76,6 +76,13 @@ jobs:
       - name: Run health and readiness smoke tests
         working-directory: crystell
         run: sh scripts/smoke.sh
+      - name: Verify PostgreSQL tenant boundaries
+        working-directory: crystell
+        run: |
+          docker compose exec -T \
+            -e RAILS_ENV=test \
+            -e DATABASE_URL=postgresql://crystell_app:change-me-app-local-only@postgres:5432/crystell_development \
+            api bundle exec rspec spec/services/tenant_scope_spec.rb
       - name: Print service logs on failure
         if: failure()
         working-directory: crystell
