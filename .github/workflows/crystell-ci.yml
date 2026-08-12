@@ -1,0 +1,86 @@
+name: Crystell CI
+
+on:
+  push:
+    branches:
+      - main
+      - agent/crystell-**
+    paths:
+      - "crystell/**"
+      - ".github/workflows/crystell-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "crystell/**"
+      - ".github/workflows/crystell-ci.yml"
+
+jobs:
+  validate-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Docker Compose
+        working-directory: crystell
+        run: docker compose --env-file .env.example config
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install web dependencies
+        working-directory: crystell/apps/web
+        run: npm install
+      - name: Build web
+        working-directory: crystell/apps/web
+        run: npm run build
+      - name: Build web container
+        working-directory: crystell/apps/web
+        run: docker build -t crystell-web:ci .
+
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API container
+        working-directory: crystell/apps/api
+        run: docker build -t crystell-api:ci .
+
+  ai-service:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install AI service
+        working-directory: crystell/services/ai
+        run: pip install .
+      - name: Import application
+        working-directory: crystell/services/ai
+        run: python -c "from app.main import app; assert app.title == 'Crystell AI Service'"
+      - name: Build AI container
+        working-directory: crystell/services/ai
+        run: docker build -t crystell-ai:ci .
+
+  smoke:
+    runs-on: ubuntu-latest
+    needs: [validate-compose, web, api, ai-service]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start full Crystell stack
+        working-directory: crystell
+        run: docker compose --env-file .env.example up -d --build
+      - name: Run health and readiness smoke tests
+        working-directory: crystell
+        run: sh scripts/smoke.sh
+      - name: Print service logs on failure
+        if: failure()
+        working-directory: crystell
+        run: docker compose logs --no-color --tail=300
+      - name: Stop stack
+        if: always()
+        working-directory: crystell
+        run: docker compose down -v --remove-orphans
