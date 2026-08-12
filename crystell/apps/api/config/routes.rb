@@ -11,6 +11,14 @@ Rails.application.routes.draw do
       post "/mfa/challenge", to: "mfa#challenge"
     end
 
+    namespace :security do
+      resources :sessions, only: %i[index destroy] do
+        collection do
+          delete :others, action: :revoke_others
+        end
+      end
+    end
+
     get "/me", to: "me#show"
     resources :stores, only: :index
   end
