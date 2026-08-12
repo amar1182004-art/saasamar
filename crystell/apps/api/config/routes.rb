@@ -9,6 +9,10 @@ Rails.application.routes.draw do
       post "/mfa/setup", to: "mfa#setup"
       post "/mfa/confirm", to: "mfa#confirm"
       post "/mfa/challenge", to: "mfa#challenge"
+      post "/password-reset/request", to: "password_resets#create"
+      post "/password-reset/confirm", to: "password_resets#update"
+      post "/email-verification/request", to: "email_verifications#create"
+      post "/email-verification/confirm", to: "email_verifications#update"
     end
 
     namespace :security do
