@@ -1,6 +1,6 @@
 # Crystell
 
-Crystell is the new commerce SaaS platform being built in this repository.
+Crystell is the new commerce SaaS platform being built in this repository. The existing LastSaaS implementation remains untouched while the new platform foundation is established inside the isolated `crystell/` workspace.
 
 ## Target architecture
 
@@ -21,6 +21,22 @@ Crystell is the new commerce SaaS platform being built in this repository.
 - Redis: `6379`
 - MinIO API: `9000`
 - MinIO console: `9001`
+
+## Local startup
+
+```bash
+cd crystell
+cp .env.example .env
+docker compose up --build
+```
+
+Health endpoints:
+
+```text
+http://localhost:3000/api/health
+http://localhost:3001/health
+http://localhost:8000/health
+```
 
 ## Architecture principles
 
