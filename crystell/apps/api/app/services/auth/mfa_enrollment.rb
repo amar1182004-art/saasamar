@@ -52,6 +52,7 @@ module Auth
           recovery_code_digests: RecoveryCodes.digests(recovery_codes)
         )
         user.update!(mfa_enabled: true)
+        SecurityAudit.record!("auth.mfa_enabled")
 
         Confirmation.new(recovery_codes: recovery_codes)
       end
