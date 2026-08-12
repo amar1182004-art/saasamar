@@ -28,7 +28,12 @@ module V1
         throttle.reset_success!
 
         if result.mfa_enabled
-          return render json: { error: "mfa_required" }, status: :precondition_required
+          challenge = ::Auth::MfaChallenge.issue(user_id: result.user_id)
+          return render json: {
+            error: "mfa_required",
+            challenge_token: challenge.token,
+            expires_in: challenge.expires_in
+          }, status: :precondition_required
         end
 
         issued = ::Auth::SessionIssuer.call(
