@@ -105,6 +105,7 @@ jobs:
               spec/services/billing_promotions_spec.rb \
               spec/services/catalog_inventory_foundation_spec.rb \
               spec/services/category_hierarchy_spec.rb \
+              spec/services/product_media_spec.rb \
               spec/requests/billing_permissions_spec.rb \
               spec/requests/catalog_inventory_permissions_spec.rb
       - name: Print service logs on failure
