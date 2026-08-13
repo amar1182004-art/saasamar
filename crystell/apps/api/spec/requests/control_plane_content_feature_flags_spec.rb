@@ -170,7 +170,10 @@ RSpec.describe "Control plane content and feature flag APIs", type: :request do
         headers: bearer(@owner_token),
         as: :json
     expect(response).to have_http_status(:unprocessable_entity)
-    expect(response.parsed_body.fetch("details")).to include("secret-like key")
+    expect(response.parsed_body).to include(
+      "error" => "feature_flag_validation_failed",
+      "details" => a_string_including("secret-like key")
+    )
     expect(ControlPlaneFeatureFlag.find_by!(key: "new-checkout").config).to eq({ "cohort" => "pilot" })
     expect(ControlPlaneAuditEvent.where(action: "control_plane.feature_flag_updated").count).to eq(1)
   end
