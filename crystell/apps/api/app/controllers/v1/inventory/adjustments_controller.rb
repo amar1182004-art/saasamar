@@ -30,6 +30,8 @@ module V1
         render json: { error: "invalid_inventory_adjustment", message: error.message }, status: :unprocessable_entity
       rescue ::Inventory::Adjuster::InsufficientStockError => error
         render json: { error: "inventory_adjustment_conflict", message: error.message }, status: :conflict
+      rescue ::Inventory::Adjuster::IdempotencyConflictError => error
+        render json: { error: "inventory_idempotency_conflict", message: error.message }, status: :conflict
       end
 
       private
