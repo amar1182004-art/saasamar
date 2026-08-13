@@ -89,7 +89,7 @@ jobs:
       - name: Verify persistent account lockout
         working-directory: crystell
         run: python3 scripts/lockout_smoke.py
-      - name: Verify tenant, identity, billing, catalog, inventory, checkout, payment and shipping security boundaries
+      - name: Verify tenant, commerce and control-plane security boundaries
         working-directory: crystell
         run: |
           docker compose exec -T \
@@ -114,9 +114,18 @@ jobs:
               spec/services/payment_foundation_spec.rb \
               spec/services/shipping_foundation_spec.rb \
               spec/services/shipping_immutability_spec.rb \
+              spec/services/control_plane_foundation_spec.rb \
+              spec/services/control_plane_tenant_directory_spec.rb \
+              spec/services/control_plane_tenant_support_overview_spec.rb \
               spec/requests/billing_permissions_spec.rb \
               spec/requests/catalog_inventory_permissions_spec.rb \
-              spec/requests/storefront_permissions_spec.rb
+              spec/requests/storefront_permissions_spec.rb \
+              spec/requests/dashboard_permissions_spec.rb \
+              spec/requests/control_plane_authentication_spec.rb \
+              spec/requests/control_plane_tenant_directory_spec.rb \
+              spec/requests/control_plane_audit_security_spec.rb \
+              spec/requests/control_plane_content_feature_flags_spec.rb \
+              spec/requests/merchant_tenant_directory_spec.rb
       - name: Print service logs on failure
         if: failure()
         working-directory: crystell

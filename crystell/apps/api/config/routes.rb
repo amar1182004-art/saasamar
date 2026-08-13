@@ -2,6 +2,28 @@ Rails.application.routes.draw do
   get "/health", to: "health#show"
   get "/ready", to: "readiness#show"
 
+  namespace :control do
+    namespace :v1 do
+      resource :session, only: %i[create destroy]
+      resource :me, only: :show, controller: "me"
+      resource :elevation, only: :create
+      resources :tenants, only: %i[index show]
+      get "/audit-events", to: "audit_events#index"
+      resource :security, only: :show, controller: "security"
+
+      get "/content", to: "content#index"
+      get "/content/:key", to: "content#show", format: false
+      put "/content/:key", to: "content#update", format: false
+      post "/content/:key/publish", to: "content#publish", format: false
+      post "/content/:key/rollback", to: "content#rollback", format: false
+      get "/content/:key/versions", to: "content#versions", format: false
+
+      get "/feature-flags", to: "feature_flags#index"
+      get "/feature-flags/:key", to: "feature_flags#show", format: false
+      put "/feature-flags/:key", to: "feature_flags#update", format: false
+    end
+  end
+
   namespace :v1 do
     post "/payment-webhooks/:endpoint_id", to: "payment_webhooks#create"
     post "/shipping-webhooks/:endpoint_id", to: "shipping_webhooks#create"
@@ -42,7 +64,9 @@ Rails.application.routes.draw do
     post "/tenant/ownership-transfer", to: "tenant_ownership#transfer"
 
     get "/me", to: "me#show"
+    resources :tenants, only: :index
     resources :stores, only: :index
+    get "/stores/:store_id/dashboard", to: "dashboard#show"
 
     get "/stores/:store_id/storefront", to: "storefront#show"
     patch "/stores/:store_id/storefront", to: "storefront#update"

@@ -71,4 +71,4 @@ The Rails API runs `db:prepare` on startup. The readiness endpoint verifies Post
 7. Every sensitive operation is auditable.
 8. Production infrastructure is replaceable; business logic must not depend on a single hosting provider.
 
-See `docs/PHASES.md`, `docs/ARCHITECTURE.md`, and `docs/PHASE_0_STATUS.md` for the implementation plan and status.
+See `docs/PHASES.md`, `docs/ARCHITECTURE.md`, and the phase status reports in `docs/` for the implementation plan and current verification state.
