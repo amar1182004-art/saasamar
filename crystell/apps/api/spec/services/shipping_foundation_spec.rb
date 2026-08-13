@@ -50,6 +50,7 @@ RSpec.describe "Shipping foundation" do
   after do
     tenant_id = @registration&.tenant_id
     if tenant_id.present? && @admin
+      @admin.exec_params("UPDATE checkout_sessions SET selected_shipping_rate_quote_id = NULL WHERE tenant_id = $1::uuid", [tenant_id])
       %w[shipment_events shipments shipping_rate_quotes shipping_provider_accounts].each do |table|
         @admin.exec_params("DELETE FROM #{table} WHERE tenant_id = $1::uuid", [tenant_id])
       end
