@@ -58,6 +58,27 @@ class AddTenantInvitationsAndOwnerIntegrity < ActiveRecord::Migration[8.0]
       name: "identity_delivery_outbox_purpose_check"
 
     execute <<~SQL
+      CREATE OR REPLACE FUNCTION crystell.tenant_has_member_email(p_email text)
+      RETURNS boolean
+      LANGUAGE sql
+      STABLE
+      SECURITY DEFINER
+      SET search_path = pg_catalog, public, crystell
+      AS $$
+        SELECT CASE
+          WHEN crystell.current_tenant_id() IS NULL THEN false
+          ELSE EXISTS (
+            SELECT 1
+            FROM public.memberships m
+            JOIN public.users u ON u.id = m.user_id
+            WHERE m.tenant_id = crystell.current_tenant_id()
+              AND u.email = p_email::public.citext
+          )
+        END
+      $$
+    SQL
+
+    execute <<~SQL
       CREATE OR REPLACE FUNCTION crystell.enqueue_tenant_invitation_delivery(
         p_destination_fingerprint text,
         p_encrypted_payload text
@@ -71,21 +92,11 @@ class AddTenantInvitationsAndOwnerIntegrity < ActiveRecord::Migration[8.0]
         v_outbox_id uuid := gen_random_uuid();
       BEGIN
         INSERT INTO public.identity_delivery_outbox (
-          id,
-          purpose,
-          destination_fingerprint,
-          encrypted_payload,
-          available_at,
-          created_at,
-          updated_at
+          id, purpose, destination_fingerprint, encrypted_payload,
+          available_at, created_at, updated_at
         ) VALUES (
-          v_outbox_id,
-          'tenant_invitation',
-          p_destination_fingerprint,
-          p_encrypted_payload,
-          CURRENT_TIMESTAMP,
-          CURRENT_TIMESTAMP,
-          CURRENT_TIMESTAMP
+          v_outbox_id, 'tenant_invitation', p_destination_fingerprint,
+          p_encrypted_payload, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         );
 
         RETURN v_outbox_id;
@@ -130,21 +141,20 @@ class AddTenantInvitationsAndOwnerIntegrity < ActiveRecord::Migration[8.0]
           RETURN NULL;
         END IF;
 
+        IF EXISTS (
+          SELECT 1 FROM public.memberships
+          WHERE tenant_id = v_invitation.tenant_id
+            AND user_id = v_user_id
+        ) THEN
+          RETURN NULL;
+        END IF;
+
         INSERT INTO public.memberships (
           id, tenant_id, user_id, role, status, created_at, updated_at
         ) VALUES (
-          gen_random_uuid(),
-          v_invitation.tenant_id,
-          v_user_id,
-          v_invitation.role,
-          'active',
-          CURRENT_TIMESTAMP,
-          CURRENT_TIMESTAMP
-        )
-        ON CONFLICT (tenant_id, user_id) DO UPDATE
-        SET role = EXCLUDED.role,
-            status = 'active',
-            updated_at = CURRENT_TIMESTAMP;
+          gen_random_uuid(), v_invitation.tenant_id, v_user_id,
+          v_invitation.role, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        );
 
         UPDATE public.tenant_invitations
         SET accepted_at = CURRENT_TIMESTAMP,
@@ -156,6 +166,8 @@ class AddTenantInvitationsAndOwnerIntegrity < ActiveRecord::Migration[8.0]
       $$
     SQL
 
+    execute "REVOKE ALL ON FUNCTION crystell.tenant_has_member_email(text) FROM PUBLIC"
+    execute "GRANT EXECUTE ON FUNCTION crystell.tenant_has_member_email(text) TO crystell_runtime"
     execute "REVOKE ALL ON FUNCTION crystell.enqueue_tenant_invitation_delivery(text,text) FROM PUBLIC"
     execute "GRANT EXECUTE ON FUNCTION crystell.enqueue_tenant_invitation_delivery(text,text) TO crystell_runtime"
     execute "REVOKE ALL ON FUNCTION crystell.accept_tenant_invitation(text) FROM PUBLIC"
@@ -165,6 +177,7 @@ class AddTenantInvitationsAndOwnerIntegrity < ActiveRecord::Migration[8.0]
   def down
     execute "DROP FUNCTION IF EXISTS crystell.accept_tenant_invitation(text)"
     execute "DROP FUNCTION IF EXISTS crystell.enqueue_tenant_invitation_delivery(text,text)"
+    execute "DROP FUNCTION IF EXISTS crystell.tenant_has_member_email(text)"
 
     remove_check_constraint :identity_delivery_outbox, name: "identity_delivery_outbox_purpose_check"
     add_check_constraint :identity_delivery_outbox,
