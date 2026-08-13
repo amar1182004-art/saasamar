@@ -12,7 +12,7 @@ module V1
           delta_on_hand: params.require(:delta_on_hand),
           reason: params.require(:reason),
           idempotency_key: params.require(:idempotency_key),
-          metadata: params.fetch(:metadata, {}).permit!.to_h
+          metadata: metadata_params
         )
 
         render json: {
@@ -30,6 +30,15 @@ module V1
         render json: { error: "invalid_inventory_adjustment", message: error.message }, status: :unprocessable_entity
       rescue ::Inventory::Adjuster::InsufficientStockError => error
         render json: { error: "inventory_adjustment_conflict", message: error.message }, status: :conflict
+      end
+
+      private
+
+      def metadata_params
+        value = params[:metadata]
+        return {} if value.blank?
+
+        value.permit!.to_h
       end
     end
   end
