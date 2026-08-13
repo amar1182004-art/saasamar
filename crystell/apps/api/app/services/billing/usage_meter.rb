@@ -23,7 +23,7 @@ module Billing
       event = nil
       total_quantity = nil
 
-      ApplicationRecord.transaction do
+      ApplicationRecord.transaction(requires_new: true) do
         event = UsageEvent.create!(
           tenant_id: Current.tenant_id,
           billing_feature: feature,
