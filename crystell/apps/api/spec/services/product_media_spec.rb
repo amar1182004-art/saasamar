@@ -30,10 +30,20 @@ RSpec.describe "Product media" do
 
     TenantAccess.with(user: @owner, tenant_id: @registration.tenant_id) do
       @store = Store.find_by!(slug: "media-store-#{unique}")
+      @second_store = Store.create!(
+        tenant_id: Current.tenant_id,
+        name: "Second Media Store #{unique}",
+        slug: "second-media-store-#{unique}"
+      )
       @product = Catalog::ProductCreator.call(
         store_id: @store.id,
         attributes: { title: "Media Product", slug: "media-product-#{unique}" },
         variants: [{ title: "Default", currency: "EGP", price_cents: 10_000 }]
+      )
+      @second_product = Catalog::ProductCreator.call(
+        store_id: @second_store.id,
+        attributes: { title: "Second Media Product", slug: "second-media-product-#{unique}" },
+        variants: [{ title: "Default", currency: "EGP", price_cents: 11_000 }]
       )
     end
   end
@@ -75,12 +85,22 @@ RSpec.describe "Product media" do
           content_type: "image/jpeg"
         )
 
-        media = Catalog::ProductMediaManager.complete(media_id: upload.media_id, width: 1200, height: 800)
+        media = Catalog::ProductMediaManager.complete(
+          store_id: @store.id,
+          product_id: @product.id,
+          media_id: upload.media_id,
+          width: 1200,
+          height: 800
+        )
         expect(media.status).to eq("ready")
         expect(media.width).to eq(1200)
         expect(media.height).to eq(800)
 
-        preview_url = Catalog::ProductMediaManager.preview_url(media_id: media.id)
+        preview_url = Catalog::ProductMediaManager.preview_url(
+          store_id: @store.id,
+          product_id: @product.id,
+          media_id: media.id
+        )
         expect(preview_url).to include(ENV.fetch("S3_BUCKET"))
       end
 
@@ -95,6 +115,34 @@ RSpec.describe "Product media" do
           nil
         end
       end
+    end
+  end
+
+  it "does not allow a media id to be replayed through another store or product in the same tenant" do
+    TenantAccess.with(user: @owner, tenant_id: @registration.tenant_id) do
+      upload = Catalog::ProductMediaManager.issue_upload(
+        store_id: @store.id,
+        product_id: @product.id,
+        filename: "scoped.jpg",
+        content_type: "image/jpeg",
+        byte_size: 10
+      )
+
+      expect do
+        Catalog::ProductMediaManager.preview_url(
+          store_id: @second_store.id,
+          product_id: @second_product.id,
+          media_id: upload.media_id
+        )
+      end.to raise_error(ActiveRecord::RecordNotFound)
+
+      expect do
+        Catalog::ProductMediaManager.destroy(
+          store_id: @second_store.id,
+          product_id: @second_product.id,
+          media_id: upload.media_id
+        )
+      end.to raise_error(ActiveRecord::RecordNotFound)
     end
   end
 
@@ -140,7 +188,11 @@ RSpec.describe "Product media" do
       )
 
       expect do
-        Catalog::ProductMediaManager.complete(media_id: upload.media_id)
+        Catalog::ProductMediaManager.complete(
+          store_id: @store.id,
+          product_id: @product.id,
+          media_id: upload.media_id
+        )
       end.to raise_error(Catalog::ProductMediaManager::UploadVerificationError)
 
       expect(ProductMedia.find(upload.media_id).status).to eq("failed")
