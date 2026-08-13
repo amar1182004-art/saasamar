@@ -5,6 +5,7 @@ module Shipping
 
     def self.call(checkout_session_id:, shipping_rate_quote_id:, shipping_address:, now: Time.current)
       raise MissingTenantContextError, "tenant context is required" if Current.tenant_id.blank?
+      TenantPermission.require!(Current.membership, "shipping.manage")
 
       ApplicationRecord.transaction(requires_new: true) do
         checkout = CheckoutSession.lock.find(checkout_session_id)
@@ -17,7 +18,9 @@ module Shipping
         raise InvalidQuoteError, "shipping quote currency mismatch" unless quote.currency == checkout.currency
 
         address = shipping_address.respond_to?(:to_h) ? shipping_address.to_h.stringify_keys : {}
-        raise InvalidQuoteError, "shipping address country_code is required" if address["country_code"].blank?
+        country_code = address["country_code"].to_s.strip.upcase
+        raise InvalidQuoteError, "shipping address country_code is required" unless country_code.match?(/\A[A-Z]{2}\z/)
+        address["country_code"] = country_code
 
         new_total = checkout.subtotal_cents - checkout.discount_cents + quote.amount_cents + checkout.tax_cents
         checkout.update!(
