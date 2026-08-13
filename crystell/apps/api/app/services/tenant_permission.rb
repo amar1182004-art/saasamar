@@ -13,6 +13,10 @@ class TenantPermission
       security.read
       billing.read
       billing.manage
+      catalog.read
+      catalog.manage
+      inventory.read
+      inventory.manage
     ],
     "admin" => %w[
       members.read
@@ -21,9 +25,15 @@ class TenantPermission
       stores.manage
       security.read
       billing.read
+      catalog.read
+      catalog.manage
+      inventory.read
+      inventory.manage
     ],
     "member" => %w[
       stores.read
+      catalog.read
+      inventory.read
     ]
   }.freeze
 
