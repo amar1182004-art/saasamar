@@ -2,13 +2,14 @@ module Control
   module V1
     class AuditEventsController < BaseController
       def index
+        query = request.query_parameters
         result = ControlPlane::AuditLog.call(
-          action: params[:action],
-          actor_id: params[:actor_id],
-          target_type: params[:target_type],
-          target_id: params[:target_id],
-          limit: params[:limit],
-          offset: params[:offset],
+          action: query["action"],
+          actor_id: query["actor_id"],
+          target_type: query["target_type"],
+          target_id: query["target_id"],
+          limit: query["limit"],
+          offset: query["offset"],
           request_id: request.request_id,
           ip_address: request.remote_ip
         )
