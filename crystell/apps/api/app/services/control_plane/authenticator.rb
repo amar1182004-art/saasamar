@@ -1,3 +1,4 @@
+require "bcrypt"
 require "digest"
 require "rotp"
 require "securerandom"
@@ -5,20 +6,22 @@ require "securerandom"
 module ControlPlane
   class Authenticator
     class AuthenticationError < StandardError; end
-    class AccountLockedError < StandardError; end
+    class ReplayedMfaError < StandardError; end
 
+    DUMMY_PASSWORD = BCrypt::Password.create(SecureRandom.hex(32)).to_s
     Result = Data.define(:user, :session, :token)
 
     def self.call(email:, password:, otp:, ip_address: nil, user_agent: nil, now: Time.current)
       normalized_email = email.to_s.strip.downcase
       user = ControlPlaneUser.find_by(email: normalized_email)
+      password_valid = password_valid?(user, password)
 
       if user&.locked_until.present? && user.locked_until > now
         audit_failure(user, ip_address, "account_locked")
-        raise AccountLockedError, "control plane account is locked"
+        raise AuthenticationError, "invalid control plane credentials"
       end
 
-      unless user&.status == "active" && user.authenticate(password.to_s) && user.mfa_enabled?
+      unless user&.status == "active" && password_valid && user.mfa_enabled?
         record_failure!(user, now)
         audit_failure(user, ip_address, "invalid_credentials")
         raise AuthenticationError, "invalid control plane credentials"
@@ -36,44 +39,57 @@ module ControlPlane
       ttl_minutes = Integer(ENV.fetch("CONTROL_PLANE_SESSION_TTL_MINUTES", "60"))
       session = nil
 
-      ControlPlaneRecord.transaction do
-        locked_user = ControlPlaneUser.lock.find(user.id)
-        if locked_user.last_mfa_timestep.present? && timestep <= locked_user.last_mfa_timestep
-          record_failure!(locked_user, now)
-          audit_failure(locked_user, ip_address, "replayed_mfa")
-          raise AuthenticationError, "invalid control plane credentials"
+      begin
+        ControlPlaneRecord.transaction do
+          locked_user = ControlPlaneUser.lock.find(user.id)
+          if locked_user.last_mfa_timestep.present? && timestep <= locked_user.last_mfa_timestep
+            raise ReplayedMfaError
+          end
+
+          locked_user.update!(
+            failed_login_attempts: 0,
+            locked_until: nil,
+            last_authenticated_at: now,
+            last_mfa_timestep: timestep
+          )
+
+          session = ControlPlaneSession.create!(
+            control_plane_user_id: locked_user.id,
+            token_digest: token_digest,
+            expires_at: now + ttl_minutes.minutes,
+            mfa_verified_at: now,
+            ip_hash: ip_address.present? ? CredentialVault.fingerprint(ip_address.to_s, purpose: "control-plane-ip") : nil,
+            user_agent: user_agent.to_s.first(1_000).presence,
+            last_seen_at: now
+          )
+
+          AuditWriter.call(
+            action: "control_plane.session_created",
+            user: locked_user,
+            session: session,
+            target_type: "ControlPlaneSession",
+            target_id: session.id,
+            ip_address: ip_address
+          )
+          user = locked_user
         end
-
-        locked_user.update!(
-          failed_login_attempts: 0,
-          locked_until: nil,
-          last_authenticated_at: now,
-          last_mfa_timestep: timestep
-        )
-
-        session = ControlPlaneSession.create!(
-          control_plane_user_id: locked_user.id,
-          token_digest: token_digest,
-          expires_at: now + ttl_minutes.minutes,
-          mfa_verified_at: now,
-          ip_hash: ip_address.present? ? CredentialVault.fingerprint(ip_address.to_s, purpose: "control-plane-ip") : nil,
-          user_agent: user_agent.to_s.first(1_000).presence,
-          last_seen_at: now
-        )
-
-        AuditWriter.call(
-          action: "control_plane.session_created",
-          user: locked_user,
-          session: session,
-          target_type: "ControlPlaneSession",
-          target_id: session.id,
-          ip_address: ip_address
-        )
-        user = locked_user
+      rescue ReplayedMfaError
+        record_failure!(user, now)
+        audit_failure(user, ip_address, "replayed_mfa")
+        raise AuthenticationError, "invalid control plane credentials"
       end
 
       Result.new(user: user, session: session, token: token)
     end
+
+    def self.password_valid?(user, password)
+      if user
+        !!user.authenticate(password.to_s)
+      else
+        BCrypt::Password.new(DUMMY_PASSWORD).is_password?(password.to_s)
+      end
+    end
+    private_class_method :password_valid?
 
     def self.verify_mfa(user, otp)
       ROTP::TOTP.new(user.mfa_secret, issuer: "Crystell Control Plane").verify(
@@ -82,7 +98,7 @@ module ControlPlane
         drift_ahead: 30,
         after: user.last_mfa_timestep
       )
-    rescue ROTP::Base32::Base32Error, ArgumentError
+    rescue ROTP::Base32::Base32Error, ArgumentError, ControlPlane::CredentialVault::DecryptionError
       nil
     end
     private_class_method :verify_mfa
