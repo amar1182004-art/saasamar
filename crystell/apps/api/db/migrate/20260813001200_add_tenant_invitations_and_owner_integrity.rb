@@ -94,10 +94,7 @@ class AddTenantInvitationsAndOwnerIntegrity < ActiveRecord::Migration[8.0]
     SQL
 
     execute <<~SQL
-      CREATE OR REPLACE FUNCTION crystell.accept_tenant_invitation(
-        p_token_digest text,
-        p_user_id uuid
-      )
+      CREATE OR REPLACE FUNCTION crystell.accept_tenant_invitation(p_token_digest text)
       RETURNS uuid
       LANGUAGE plpgsql
       SECURITY DEFINER
@@ -105,8 +102,13 @@ class AddTenantInvitationsAndOwnerIntegrity < ActiveRecord::Migration[8.0]
       AS $$
       DECLARE
         v_invitation public.tenant_invitations%ROWTYPE;
+        v_user_id uuid := crystell.current_user_id();
         v_user_email public.citext;
       BEGIN
+        IF v_user_id IS NULL THEN
+          RETURN NULL;
+        END IF;
+
         SELECT * INTO v_invitation
         FROM public.tenant_invitations
         WHERE token_digest = p_token_digest
@@ -121,7 +123,7 @@ class AddTenantInvitationsAndOwnerIntegrity < ActiveRecord::Migration[8.0]
 
         SELECT email INTO v_user_email
         FROM public.users
-        WHERE id = p_user_id
+        WHERE id = v_user_id
           AND status = 'active';
 
         IF v_user_email IS NULL OR v_user_email <> v_invitation.email THEN
@@ -133,7 +135,7 @@ class AddTenantInvitationsAndOwnerIntegrity < ActiveRecord::Migration[8.0]
         ) VALUES (
           gen_random_uuid(),
           v_invitation.tenant_id,
-          p_user_id,
+          v_user_id,
           v_invitation.role,
           'active',
           CURRENT_TIMESTAMP,
@@ -156,12 +158,12 @@ class AddTenantInvitationsAndOwnerIntegrity < ActiveRecord::Migration[8.0]
 
     execute "REVOKE ALL ON FUNCTION crystell.enqueue_tenant_invitation_delivery(text,text) FROM PUBLIC"
     execute "GRANT EXECUTE ON FUNCTION crystell.enqueue_tenant_invitation_delivery(text,text) TO crystell_runtime"
-    execute "REVOKE ALL ON FUNCTION crystell.accept_tenant_invitation(text,uuid) FROM PUBLIC"
-    execute "GRANT EXECUTE ON FUNCTION crystell.accept_tenant_invitation(text,uuid) TO crystell_runtime"
+    execute "REVOKE ALL ON FUNCTION crystell.accept_tenant_invitation(text) FROM PUBLIC"
+    execute "GRANT EXECUTE ON FUNCTION crystell.accept_tenant_invitation(text) TO crystell_runtime"
   end
 
   def down
-    execute "DROP FUNCTION IF EXISTS crystell.accept_tenant_invitation(text,uuid)"
+    execute "DROP FUNCTION IF EXISTS crystell.accept_tenant_invitation(text)"
     execute "DROP FUNCTION IF EXISTS crystell.enqueue_tenant_invitation_delivery(text,text)"
 
     remove_check_constraint :identity_delivery_outbox, name: "identity_delivery_outbox_purpose_check"
