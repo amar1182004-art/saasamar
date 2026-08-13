@@ -94,7 +94,7 @@ class AddCouponsAndAffiliates < ActiveRecord::Migration[8.0]
       t.uuid :tenant_id, null: false
       t.references :billing_affiliate, type: :uuid, null: false, foreign_key: true
       t.references :billing_affiliate_attribution, type: :uuid, null: false, foreign_key: true
-      t.references :invoice, type: :uuid, null: false, foreign_key: true
+      t.references :invoice, type: :uuid, null: false, foreign_key: true, index: { unique: true }
       t.string :currency, null: false
       t.bigint :basis_cents, null: false
       t.bigint :amount_cents, null: false
@@ -106,7 +106,6 @@ class AddCouponsAndAffiliates < ActiveRecord::Migration[8.0]
       t.timestamps
     end
     add_foreign_key :billing_commissions, :tenants
-    add_index :billing_commissions, :invoice_id, unique: true
     add_index :billing_commissions, [:billing_affiliate_id, :status, :earned_at], name: "idx_billing_commissions_affiliate_state"
     add_check_constraint :billing_commissions, "currency = upper(currency) AND char_length(currency) = 3", name: "billing_commissions_currency_check"
     add_check_constraint :billing_commissions, "basis_cents >= 0 AND amount_cents >= 0", name: "billing_commissions_amount_check"
