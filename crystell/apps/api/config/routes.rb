@@ -3,6 +3,8 @@ Rails.application.routes.draw do
   get "/ready", to: "readiness#show"
 
   namespace :v1 do
+    post "/payment-webhooks/:endpoint_id", to: "payment_webhooks#create"
+
     namespace :auth do
       resource :registration, only: :create
       resource :session, only: %i[create destroy]
