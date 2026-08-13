@@ -9,6 +9,7 @@ module Shipping
 
     def self.call(checkout_session_id:, shipping_provider_account_id:, destination:)
       raise MissingTenantContextError, "tenant context is required" if Current.tenant_id.blank?
+      TenantPermission.require!(Current.membership, "shipping.manage")
 
       checkout = CheckoutSession.find(checkout_session_id)
       raise InvalidCheckoutError, "checkout is not available for shipping quotes" unless %w[open inventory_reserved].include?(checkout.status)
