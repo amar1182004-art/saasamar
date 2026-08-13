@@ -62,10 +62,10 @@ module Catalog
       raise InvalidMediaError, "invalid media size or position"
     end
 
-    def self.complete(media_id:, width: nil, height: nil, duration_ms: nil, object_store: Storage::ObjectStore)
+    def self.complete(store_id:, product_id:, media_id:, width: nil, height: nil, duration_ms: nil, object_store: Storage::ObjectStore)
       require_context_and_permission!
 
-      media = ProductMedia.lock.find(media_id)
+      media = scoped_media(store_id: store_id, product_id: product_id, media_id: media_id)
       return media if media.status == "ready"
 
       head = object_store.head(key: media.object_key)
@@ -88,20 +88,29 @@ module Catalog
       raise UploadVerificationError, "uploaded object was not found"
     end
 
-    def self.destroy(media_id:, object_store: Storage::ObjectStore)
+    def self.destroy(store_id:, product_id:, media_id:, object_store: Storage::ObjectStore)
       require_context_and_permission!
 
-      media = ProductMedia.find(media_id)
+      media = scoped_media(store_id: store_id, product_id: product_id, media_id: media_id)
       object_store.delete(key: media.object_key)
       media.destroy!
     end
 
-    def self.preview_url(media_id:, object_store: Storage::ObjectStore)
+    def self.preview_url(store_id:, product_id:, media_id:, object_store: Storage::ObjectStore)
       require_context_and_read_permission!
 
-      media = ProductMedia.ready.find(media_id)
+      media = scoped_media(store_id: store_id, product_id: product_id, media_id: media_id, status: "ready")
       object_store.presigned_get(key: media.object_key)
     end
+
+    def self.scoped_media(store_id:, product_id:, media_id:, status: nil)
+      store = Store.find(store_id)
+      product = Product.find_by!(id: product_id, store_id: store.id)
+      scope = ProductMedia.where(store_id: store.id, product_id: product.id)
+      scope = scope.where(status: status) if status
+      scope.find(media_id)
+    end
+    private_class_method :scoped_media
 
     def self.require_context_and_permission!
       raise MissingTenantContextError, "tenant context is required" if Current.tenant_id.blank?
