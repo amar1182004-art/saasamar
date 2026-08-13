@@ -4,6 +4,9 @@ class PaymentProviderAccount < ApplicationRecord
   has_many :payment_intents, dependent: :restrict_with_exception
   has_many :payment_webhook_events, dependent: :restrict_with_exception
 
+  CREDENTIAL_PURPOSE = "crystell:payment-provider-credentials:v1"
+  WEBHOOK_SECRET_PURPOSE = "crystell:payment-provider-webhook-secret:v1"
+
   normalizes :provider_key, with: ->(value) { value&.strip&.downcase }
   normalizes :display_name, with: ->(value) { value&.strip&.presence }
 
@@ -17,7 +20,7 @@ class PaymentProviderAccount < ApplicationRecord
   def credentials
     Payment::CredentialVault.decrypt(
       credentials_ciphertext,
-      purpose: credential_purpose,
+      purpose: CREDENTIAL_PURPOSE,
       parse_json: true
     )
   end
@@ -26,27 +29,17 @@ class PaymentProviderAccount < ApplicationRecord
     object = value.respond_to?(:to_h) ? value.to_h : nil
     raise ArgumentError, "credentials must be an object" unless object.is_a?(Hash)
 
-    self.credentials_ciphertext = Payment::CredentialVault.encrypt(object, purpose: credential_purpose)
+    self.credentials_ciphertext = Payment::CredentialVault.encrypt(object, purpose: CREDENTIAL_PURPOSE)
   end
 
   def webhook_secret
-    Payment::CredentialVault.decrypt(webhook_secret_ciphertext, purpose: webhook_secret_purpose)
+    Payment::CredentialVault.decrypt(webhook_secret_ciphertext, purpose: WEBHOOK_SECRET_PURPOSE)
   end
 
   def webhook_secret=(value)
     secret = value.to_s
     raise ArgumentError, "webhook secret is required" if secret.blank?
 
-    self.webhook_secret_ciphertext = Payment::CredentialVault.encrypt(secret, purpose: webhook_secret_purpose)
-  end
-
-  private
-
-  def credential_purpose
-    "payment-provider-account:#{id || 'new'}:credentials"
-  end
-
-  def webhook_secret_purpose
-    "payment-provider-account:#{id || 'new'}:webhook-secret"
+    self.webhook_secret_ciphertext = Payment::CredentialVault.encrypt(secret, purpose: WEBHOOK_SECRET_PURPOSE)
   end
 end
