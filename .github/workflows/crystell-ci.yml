@@ -113,6 +113,7 @@ jobs:
               spec/services/checkout_inventory_allocator_spec.rb \
               spec/services/payment_foundation_spec.rb \
               spec/services/shipping_foundation_spec.rb \
+              spec/services/shipping_immutability_spec.rb \
               spec/requests/billing_permissions_spec.rb \
               spec/requests/catalog_inventory_permissions_spec.rb \
               spec/requests/storefront_permissions_spec.rb
