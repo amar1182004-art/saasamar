@@ -3,7 +3,7 @@ class TenantCacheKey
 
   SAFE_SEGMENT = /\A[a-zA-Z0-9._-]+\z/
 
-  def self.build(tenant_id:, namespace:, *parts)
+  def self.build(*parts, tenant_id:, namespace:)
     tenant = segment!(tenant_id, "tenant_id")
     scope = segment!(namespace, "namespace")
     values = parts.map.with_index { |part, index| segment!(part, "part_#{index}") }
