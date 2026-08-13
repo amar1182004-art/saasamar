@@ -5,6 +5,7 @@ class Product < ApplicationRecord
   has_many :product_variants, dependent: :restrict_with_exception
   has_many :product_category_assignments, dependent: :delete_all
   has_many :categories, through: :product_category_assignments
+  has_many :product_media, class_name: "ProductMedia", dependent: :restrict_with_exception
 
   normalizes :title, with: ->(value) { value.strip }
   normalizes :slug, with: ->(value) { value.strip.downcase }
