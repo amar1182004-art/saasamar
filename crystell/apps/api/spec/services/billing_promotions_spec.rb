@@ -115,7 +115,7 @@ RSpec.describe "Billing promotions and affiliates" do
     Current.reset
   end
 
-  it "applies a coupon atomically and creates an affiliate commission after payment" do
+  it "applies a coupon atomically, makes invoice retries idempotent and creates one affiliate commission" do
     TenantAccess.with(user: @owner, tenant_id: @registration.tenant_id) do
       subscription = Billing::SubscriptionProvisioner.call(price_id: @price_id)
       attribution = Billing::AffiliateAttributor.call(code: @affiliate_code)
@@ -125,10 +125,16 @@ RSpec.describe "Billing promotions and affiliates" do
         subscription_id: subscription.subscription_id,
         coupon_code: @coupon_code
       )
+      retried_invoice = Billing::InvoiceIssuer.call(
+        subscription_id: subscription.subscription_id,
+        coupon_code: @coupon_code
+      )
 
       expect(invoice_result.subtotal_cents).to eq(10_000)
       expect(invoice_result.discount_cents).to eq(1_000)
       expect(invoice_result.total_cents).to eq(9_000)
+      expect(retried_invoice.invoice_id).to eq(invoice_result.invoice_id)
+      expect(Invoice.where(subscription_id: subscription.subscription_id).count).to eq(1)
       expect(BillingCouponRedemption.where(billing_coupon_id: @coupon_id).count).to eq(1)
 
       invoice = Invoice.find(invoice_result.invoice_id)
