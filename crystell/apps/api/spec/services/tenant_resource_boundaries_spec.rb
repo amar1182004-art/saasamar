@@ -8,14 +8,14 @@ RSpec.describe "Tenant resource boundaries" do
 
   it "namespaces cache keys by tenant and rejects unsafe segments" do
     key_a = TenantCacheKey.build(
+      store_id,
       tenant_id: tenant_a_id,
-      namespace: "product",
-      store_id
+      namespace: "product"
     )
     key_b = TenantCacheKey.build(
+      store_id,
       tenant_id: tenant_b_id,
-      namespace: "product",
-      store_id
+      namespace: "product"
     )
 
     expect(key_a).to start_with("tenant:#{tenant_a_id}:")
@@ -23,7 +23,7 @@ RSpec.describe "Tenant resource boundaries" do
     expect(key_a).not_to eq(key_b)
 
     expect do
-      TenantCacheKey.build(tenant_id: "../escape", namespace: "product", store_id)
+      TenantCacheKey.build(store_id, tenant_id: "../escape", namespace: "product")
     end.to raise_error(TenantCacheKey::InvalidKeyError)
   end
 
