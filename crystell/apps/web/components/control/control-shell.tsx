@@ -7,6 +7,7 @@ import type { ControlMe } from "@/lib/server/control-session";
 const navigation = [
   { href: "/control", label: "نظرة عامة", key: "overview" },
   { href: "/control/tenants", label: "الشركات والمتاجر", key: "tenants" },
+  { href: "/control/support", label: "مركز الدعم", key: "support" },
   { href: "/control/content", label: "المحتوى والهوية", key: "content" },
   { href: "/control/feature-flags", label: "Feature Flags", key: "flags" },
   { href: "/control/security", label: "مركز الأمان", key: "security" },

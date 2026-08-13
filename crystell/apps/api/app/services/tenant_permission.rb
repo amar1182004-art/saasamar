@@ -24,6 +24,11 @@ class TenantPermission
       payments.manage
       shipping.read
       shipping.manage
+      support.read
+      support.create
+      support.manage
+      notifications.read
+      notifications.manage
     ],
     "admin" => %w[
       members.read
@@ -43,6 +48,11 @@ class TenantPermission
       payments.manage
       shipping.read
       shipping.manage
+      support.read
+      support.create
+      support.manage
+      notifications.read
+      notifications.manage
     ],
     "member" => %w[
       stores.read
@@ -52,6 +62,9 @@ class TenantPermission
       orders.read
       payments.read
       shipping.read
+      support.read
+      support.create
+      notifications.read
     ]
   }.freeze
 

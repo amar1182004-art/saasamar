@@ -21,6 +21,12 @@ Rails.application.routes.draw do
       get "/feature-flags", to: "feature_flags#index"
       get "/feature-flags/:key", to: "feature_flags#show", format: false
       put "/feature-flags/:key", to: "feature_flags#update", format: false
+
+      get "/support/tickets", to: "support_tickets#index"
+      get "/support/tickets/:id", to: "support_tickets#show"
+      post "/support/tickets/:id/messages", to: "support_tickets#reply"
+      patch "/support/tickets/:id", to: "support_tickets#update"
+      get "/support/tickets/:ticket_id/attachments/:id/preview", to: "support_tickets#attachment"
     end
   end
 
@@ -67,6 +73,21 @@ Rails.application.routes.draw do
     resources :tenants, only: :index
     resources :stores, only: :index
     get "/stores/:store_id/dashboard", to: "dashboard#show"
+
+    get "/stores/:store_id/support/tickets", to: "support/tickets#index"
+    post "/stores/:store_id/support/tickets", to: "support/tickets#create"
+    get "/stores/:store_id/support/tickets/:id", to: "support/tickets#show"
+    patch "/stores/:store_id/support/tickets/:id", to: "support/tickets#update"
+    post "/stores/:store_id/support/tickets/:ticket_id/messages", to: "support/messages#create"
+    post "/stores/:store_id/support/tickets/:ticket_id/attachments", to: "support/attachments#create"
+    post "/stores/:store_id/support/tickets/:ticket_id/attachments/:id/complete", to: "support/attachments#complete"
+    get "/stores/:store_id/support/tickets/:ticket_id/attachments/:id/preview", to: "support/attachments#preview"
+
+    get "/stores/:store_id/notification-templates", to: "notifications/templates#index"
+    put "/stores/:store_id/notification-templates/:key", to: "notifications/templates#update", format: false
+    post "/stores/:store_id/notification-deliveries", to: "notifications/deliveries#create"
+    get "/notifications", to: "notifications#index"
+    post "/notifications/:id/read", to: "notifications#read"
 
     get "/stores/:store_id/storefront", to: "storefront#show"
     patch "/stores/:store_id/storefront", to: "storefront#update"

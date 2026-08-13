@@ -9,6 +9,7 @@ module ControlPlane
         audit.read
         content.read
         feature_flags.read
+        support.read
       ],
       "operator" => %w[
         platform.read
@@ -19,6 +20,8 @@ module ControlPlane
         audit.read
         content.read
         feature_flags.read
+        support.read
+        support.manage
       ],
       "admin" => %w[
         platform.read
@@ -36,6 +39,8 @@ module ControlPlane
         content.manage
         feature_flags.read
         feature_flags.manage
+        support.read
+        support.manage
       ],
       "owner" => ["*"]
     }.freeze
