@@ -29,6 +29,28 @@ module V1
         render json: { error: "subscription_exists", message: error.message }, status: :conflict
       end
 
+      def destroy
+        result = ::Billing::SubscriptionLifecycle.schedule_cancellation
+        subscription = Subscription.includes(:billing_plan, :billing_price).find(result.subscription_id)
+
+        render json: { subscription: serialize(subscription) }
+      rescue TenantPermission::ForbiddenError
+        render json: { error: "permission_forbidden" }, status: :forbidden
+      rescue ::Billing::SubscriptionLifecycle::MissingSubscriptionError, ::Billing::SubscriptionLifecycle::InvalidStateError => error
+        render json: { error: "subscription_lifecycle_invalid", message: error.message }, status: :unprocessable_entity
+      end
+
+      def resume
+        result = ::Billing::SubscriptionLifecycle.resume
+        subscription = Subscription.includes(:billing_plan, :billing_price).find(result.subscription_id)
+
+        render json: { subscription: serialize(subscription) }
+      rescue TenantPermission::ForbiddenError
+        render json: { error: "permission_forbidden" }, status: :forbidden
+      rescue ::Billing::SubscriptionLifecycle::MissingSubscriptionError, ::Billing::SubscriptionLifecycle::InvalidStateError => error
+        render json: { error: "subscription_lifecycle_invalid", message: error.message }, status: :unprocessable_entity
+      end
+
       private
 
       def serialize(subscription)
