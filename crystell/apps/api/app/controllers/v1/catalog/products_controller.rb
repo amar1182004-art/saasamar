@@ -48,7 +48,7 @@ module V1
       def update
         TenantPermission.require!(Current.membership, "catalog.manage")
         product = scoped_product
-        product.update!(product_attributes.except(:published_at).merge(published_at: parsed_published_at))
+        product.update!(product_attributes)
 
         render json: { product: serialize(product) }
       rescue TenantPermission::ForbiddenError
@@ -115,11 +115,6 @@ module V1
             metadata: {}
           ).to_h.symbolize_keys
         end
-      end
-
-      def parsed_published_at
-        value = product_attributes[:published_at]
-        value.nil? || value.is_a?(Time) || value.is_a?(ActiveSupport::TimeWithZone) ? value : parse_time(value)
       end
 
       def parse_time(value)
