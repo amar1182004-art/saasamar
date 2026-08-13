@@ -1,5 +1,6 @@
 require "openssl"
 require "json"
+require "digest"
 
 module Payment
   module Adapters
