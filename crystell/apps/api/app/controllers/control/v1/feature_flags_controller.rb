@@ -43,10 +43,22 @@ module Control
       private
 
       def flag_attributes
-        params.require(:feature_flag)
-              .permit(:description, :enabled, :rollout_percentage, :reason, config: {})
-              .to_h
-              .deep_symbolize_keys
+        source = params.require(:feature_flag)
+        attributes = source
+                     .permit(:description, :enabled, :rollout_percentage, :reason)
+                     .to_h
+                     .deep_symbolize_keys
+
+        if source.key?(:config)
+          raw_config = source[:config]
+          attributes[:config] = if raw_config.respond_to?(:to_unsafe_h)
+                                  raw_config.to_unsafe_h
+                                else
+                                  raw_config
+                                end
+        end
+
+        attributes
       end
 
       def serialize(flag)
