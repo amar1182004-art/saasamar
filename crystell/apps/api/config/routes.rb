@@ -23,6 +23,10 @@ Rails.application.routes.draw do
       end
     end
 
+    resources :tenant_invitations, only: %i[index create destroy]
+    post "/invitations/accept", to: "invitations#accept"
+    post "/tenant/ownership-transfer", to: "tenant_ownership#transfer"
+
     get "/me", to: "me#show"
     resources :stores, only: :index
   end
