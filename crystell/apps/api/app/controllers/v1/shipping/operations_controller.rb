@@ -58,6 +58,22 @@ module V1
         render json: { error: "invalid_shipment", message: error.message }, status: :unprocessable_entity
       end
 
+      def cancel_shipment
+        shipment = ::Shipping::ShipmentCanceller.call(
+          store_id: params.require(:store_id),
+          shipment_id: params.require(:id),
+          reason: params[:reason]
+        )
+
+        render json: { shipment: serialize_shipment(shipment) }
+      rescue TenantPermission::ForbiddenError
+        render json: { error: "permission_forbidden" }, status: :forbidden
+      rescue ::Shipping::ShipmentCanceller::InvalidShipmentError => error
+        render json: { error: "shipment_not_found", message: error.message }, status: :not_found
+      rescue ::Shipping::ShipmentCanceller::CancellationNotAllowedError => error
+        render json: { error: "shipment_cancellation_not_allowed", message: error.message }, status: :conflict
+      end
+
       private
 
       def destination_params
