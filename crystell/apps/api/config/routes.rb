@@ -39,6 +39,28 @@ Rails.application.routes.draw do
     post "/tenant/ownership-transfer", to: "tenant_ownership#transfer"
 
     get "/me", to: "me#show"
-    resources :stores, only: :index
+
+    resources :stores, only: :index do
+      scope module: :catalog, path: "catalog" do
+        resources :products, only: %i[index show create update destroy] do
+          resources :variants, only: %i[create update destroy]
+          resources :category_assignments, only: %i[create destroy]
+        end
+        resources :categories, only: %i[index create update destroy]
+      end
+
+      scope module: :inventory, path: "inventory" do
+        resources :locations, only: %i[index create update destroy]
+        resources :levels, only: :index
+        resources :adjustments, only: :create
+        resources :reservations, only: :create do
+          member do
+            post :release
+            post :consume
+            post :expire
+          end
+        end
+      end
+    end
   end
 end
