@@ -11,6 +11,7 @@ class TenantPermission
       stores.read
       stores.manage
       security.read
+      dashboard.read
       billing.read
       billing.manage
       catalog.read
@@ -30,6 +31,7 @@ class TenantPermission
       stores.read
       stores.manage
       security.read
+      dashboard.read
       billing.read
       catalog.read
       catalog.manage
@@ -44,6 +46,7 @@ class TenantPermission
     ],
     "member" => %w[
       stores.read
+      dashboard.read
       catalog.read
       inventory.read
       orders.read
