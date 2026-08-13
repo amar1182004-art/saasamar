@@ -9,6 +9,8 @@ Rails.application.routes.draw do
       post "/mfa/setup", to: "mfa#setup"
       post "/mfa/confirm", to: "mfa#confirm"
       post "/mfa/challenge", to: "mfa#challenge"
+      post "/mfa/recovery-codes/regenerate", to: "mfa#regenerate_recovery_codes"
+      delete "/mfa", to: "mfa#destroy"
       post "/password-reset/request", to: "password_resets#create"
       post "/password-reset/confirm", to: "password_resets#update"
       post "/email-verification/request", to: "email_verifications#create"
