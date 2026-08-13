@@ -1,5 +1,3 @@
-require "securerandom"
-
 module Checkout
   class InventoryAllocator
     class MissingTenantContextError < StandardError; end
@@ -41,18 +39,14 @@ module Checkout
           location_ids.each do |location_id|
             break if remaining.zero?
 
-            level = InventoryLevel.lock.find_by(
-              tenant_id: Current.tenant_id,
+            level = Inventory::LockedAvailability.call(
               store_id: checkout.store_id,
               inventory_location_id: location_id,
               product_variant_id: variant.id
             )
-            next unless level
+            next unless level&.available&.positive?
 
-            available = level.available
-            next unless available.positive?
-
-            quantity = [remaining, available].min
+            quantity = [remaining, level.available].min
             reservation = InventoryReservation.create!(
               tenant_id: Current.tenant_id,
               store_id: checkout.store_id,
@@ -104,6 +98,8 @@ module Checkout
       result
     rescue Inventory::LedgerWriter::InsufficientStockError => error
       raise InsufficientStockError, error.message
+    rescue Inventory::LockedAvailability::MissingTenantContextError => error
+      raise MissingTenantContextError, error.message
     end
 
     def self.build_existing_result(checkout)

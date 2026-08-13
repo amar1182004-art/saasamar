@@ -81,7 +81,7 @@ RSpec.describe "Checkout inventory allocation" do
     TenantAccess.with(user: @owner, tenant_id: @registration.tenant_id) do
       checkout = build_checkout!(quantity: 4, key: "priority")
       result = Checkout::InventoryAllocator.call(checkout_session_id: checkout.id)
-      mappings = CheckoutInventoryReservation.where(checkout_session_id: checkout.id).order(:inventory_location_id).to_a
+      mappings = CheckoutInventoryReservation.where(checkout_session_id: checkout.id).to_a
 
       expect(result.status).to eq("inventory_reserved")
       expect(result.reserved_quantity).to eq(4)
@@ -139,6 +139,24 @@ RSpec.describe "Checkout inventory allocation" do
       expect(result.status).to eq("inventory_reserved")
       expect(result.reserved_quantity).to eq(0)
       expect(CheckoutInventoryReservation.where(checkout_session_id: checkout.id)).to be_empty
+    end
+  end
+
+  it "keeps direct inventory balance updates forbidden to the runtime role" do
+    TenantAccess.with(user: @owner, tenant_id: @registration.tenant_id) do
+      level = InventoryLevel.find_by!(inventory_location_id: @primary.id, product_variant_id: @variant.id)
+      connection = ApplicationRecord.connection
+
+      expect do
+        ApplicationRecord.transaction(requires_new: true) do
+          connection.execute("SAVEPOINT runtime_inventory_direct_write")
+          begin
+            connection.execute("UPDATE inventory_levels SET reserved = reserved + 1 WHERE id = #{connection.quote(level.id)}::uuid")
+          ensure
+            connection.execute("ROLLBACK TO SAVEPOINT runtime_inventory_direct_write")
+          end
+        end
+      end.to raise_error(ActiveRecord::StatementInvalid, /permission denied/)
     end
   end
 
