@@ -1,6 +1,7 @@
 require "rails_helper"
 require "pg"
 require "securerandom"
+require "thread"
 
 RSpec.describe "Catalog and inventory foundation" do
   let(:password) { "Crystell-Catalog-Test-2026!" }
@@ -185,6 +186,70 @@ RSpec.describe "Catalog and inventory foundation" do
       expect(consumed.on_hand).to eq(6)
       expect(consumed.reserved).to eq(0)
       expect(consumed.available).to eq(6)
+    end
+  end
+
+  it "serializes competing reservations so the last unit cannot be oversold" do
+    variant_id = nil
+    location_id = nil
+
+    TenantAccess.with(user: @owner_a, tenant_id: @tenant_a.tenant_id) do
+      variant = create_variant!
+      location = create_location!
+      variant_id = variant.id
+      location_id = location.id
+
+      Inventory::Adjuster.call(
+        store_id: @store_a.id,
+        inventory_location_id: location.id,
+        product_variant_id: variant.id,
+        delta_on_hand: 1,
+        reason: "stock.received",
+        idempotency_key: "seed-concurrent-#{unique}"
+      )
+    end
+
+    start_gate = Queue.new
+    results = Queue.new
+
+    threads = 2.times.map do |index|
+      Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection do
+          TenantAccess.with(user: @owner_a, tenant_id: @tenant_a.tenant_id) do
+            start_gate.pop
+            begin
+              reservation = Inventory::ReservationManager.reserve(
+                store_id: @store_a.id,
+                inventory_location_id: location_id,
+                product_variant_id: variant_id,
+                quantity: 1,
+                idempotency_key: "concurrent-reserve-#{unique}-#{index}"
+              )
+              results << [:reserved, reservation.reservation_id]
+            rescue Inventory::ReservationManager::InsufficientStockError
+              results << [:insufficient, nil]
+            end
+          end
+        end
+      end
+    end
+
+    2.times { start_gate << true }
+    threads.each(&:join)
+    outcomes = 2.times.map { results.pop.first }
+
+    expect(outcomes.count(:reserved)).to eq(1)
+    expect(outcomes.count(:insufficient)).to eq(1)
+
+    TenantAccess.with(user: @owner_a, tenant_id: @tenant_a.tenant_id) do
+      level = InventoryLevel.find_by!(
+        inventory_location_id: location_id,
+        product_variant_id: variant_id
+      )
+      expect(level.on_hand).to eq(1)
+      expect(level.reserved).to eq(1)
+      expect(level.available).to eq(0)
+      expect(InventoryReservation.active.where(product_variant_id: variant_id).count).to eq(1)
     end
   end
 
