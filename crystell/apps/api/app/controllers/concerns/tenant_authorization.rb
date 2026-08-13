@@ -10,11 +10,8 @@ module TenantAuthorization
   def with_authorized_tenant
     tenant_id = request.headers[ENV.fetch("TENANT_CONTEXT_HEADER", "X-Crystell-Tenant")]
 
-    TenantAccess.with(user: Current.user, tenant_id: tenant_id) do |membership|
-      Current.membership = membership
+    TenantAccess.with(user: Current.user, tenant_id: tenant_id) do
       yield
-    ensure
-      Current.membership = nil
     end
   rescue TenantAccess::ForbiddenError
     render json: { error: "tenant_forbidden" }, status: :forbidden
