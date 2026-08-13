@@ -1,6 +1,7 @@
 require "rails_helper"
 require "pg"
 require "securerandom"
+require "thread"
 
 RSpec.describe "Checkout inventory allocation" do
   let(:password) { "Crystell-Checkout-Inventory-Test-2026!" }
@@ -139,6 +140,63 @@ RSpec.describe "Checkout inventory allocation" do
       expect(result.status).to eq("inventory_reserved")
       expect(result.reserved_quantity).to eq(0)
       expect(CheckoutInventoryReservation.where(checkout_session_id: checkout.id)).to be_empty
+    end
+  end
+
+  it "serializes concurrent checkout allocations so only one checkout reserves the last unit" do
+    checkout_ids = nil
+
+    TenantAccess.with(user: @owner, tenant_id: @registration.tenant_id) do
+      @backup.update!(status: "inactive")
+      Inventory::Adjuster.call(
+        store_id: @store.id,
+        inventory_location_id: @primary.id,
+        product_variant_id: @variant.id,
+        delta_on_hand: -1,
+        reason: "stock.correction",
+        idempotency_key: "checkout-last-unit-#{unique}"
+      )
+
+      first = build_checkout!(quantity: 1, key: "concurrent-a")
+      second = build_checkout!(quantity: 1, key: "concurrent-b")
+      checkout_ids = [first.id, second.id]
+    end
+
+    start_gate = Queue.new
+    results = Queue.new
+    threads = checkout_ids.map do |checkout_id|
+      Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection do
+          TenantAccess.with(user: @owner, tenant_id: @registration.tenant_id) do
+            start_gate.pop
+            begin
+              Checkout::InventoryAllocator.call(checkout_session_id: checkout_id)
+              results << [checkout_id, :reserved]
+            rescue Checkout::InventoryAllocator::InsufficientStockError
+              results << [checkout_id, :insufficient]
+            end
+          end
+        end
+      end
+    end
+
+    checkout_ids.length.times { start_gate << true }
+    threads.each(&:join)
+    outcomes = checkout_ids.length.times.map { results.pop }
+
+    expect(outcomes.count { |_checkout_id, status| status == :reserved }).to eq(1)
+    expect(outcomes.count { |_checkout_id, status| status == :insufficient }).to eq(1)
+
+    TenantAccess.with(user: @owner, tenant_id: @registration.tenant_id) do
+      level = InventoryLevel.find_by!(inventory_location_id: @primary.id, product_variant_id: @variant.id)
+      expect(level.on_hand).to eq(1)
+      expect(level.reserved).to eq(1)
+      expect(level.available).to eq(0)
+
+      statuses = CheckoutSession.where(id: checkout_ids).pluck(:status)
+      expect(statuses.count("inventory_reserved")).to eq(1)
+      expect(statuses.count("open")).to eq(1)
+      expect(CheckoutInventoryReservation.where(checkout_session_id: checkout_ids).count).to eq(1)
     end
   end
 
