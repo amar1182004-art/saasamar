@@ -6,6 +6,7 @@ module Shipping
 
     def self.call(order_id:, idempotency_key:, now: Time.current)
       raise MissingTenantContextError, "tenant context is required" if Current.tenant_id.blank?
+      TenantPermission.require!(Current.membership, "shipping.manage")
       raise InvalidOrderError, "idempotency key is required" if idempotency_key.blank?
 
       shipment = nil
