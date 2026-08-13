@@ -122,7 +122,8 @@ jobs:
               spec/requests/storefront_permissions_spec.rb \
               spec/requests/dashboard_permissions_spec.rb \
               spec/requests/control_plane_authentication_spec.rb \
-              spec/requests/control_plane_tenant_directory_spec.rb
+              spec/requests/control_plane_tenant_directory_spec.rb \
+              spec/requests/control_plane_audit_security_spec.rb
       - name: Print service logs on failure
         if: failure()
         working-directory: crystell
