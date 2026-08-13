@@ -4,14 +4,17 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-crystell_development}
-      POSTGRES_USER: ${POSTGRES_USER:-crystell}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
+      POSTGRES_USER: ${POSTGRES_USER:-crystell_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-admin-local-only}
+      APP_DATABASE_USER: ${APP_DATABASE_USER:-crystell_app}
+      APP_DATABASE_PASSWORD: ${APP_DATABASE_PASSWORD:-change-me-app-local-only}
     ports:
       - "5432:5432"
     volumes:
       - crystell_postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crystell} -d ${POSTGRES_DB:-crystell_development}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crystell_admin} -d ${POSTGRES_DB:-crystell_development}"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -50,10 +53,35 @@ services:
     environment:
       RAILS_ENV: development
       PORT: 3001
-      DATABASE_URL: ${DATABASE_URL:-postgresql://crystell:change-me-local-only@postgres:5432/crystell_development}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://crystell_app:change-me-app-local-only@postgres:5432/crystell_development}
+      MIGRATION_DATABASE_URL: ${MIGRATION_DATABASE_URL:-postgresql://crystell_admin:change-me-admin-local-only@postgres:5432/crystell_development}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REDIS_POOL_SIZE: ${REDIS_POOL_SIZE:-10}
+      REDIS_POOL_TIMEOUT: ${REDIS_POOL_TIMEOUT:-1}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
       SECRET_KEY_BASE: ${APP_SECRET_KEY_BASE:-change-me-local-only}
+      SESSION_METADATA_KEY: ${SESSION_METADATA_KEY:-change-me-session-metadata-local-only}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-168}
+      LOGIN_THROTTLE_KEY: ${LOGIN_THROTTLE_KEY:-change-me-login-throttle-local-only}
+      LOGIN_THROTTLE_WINDOW_SECONDS: ${LOGIN_THROTTLE_WINDOW_SECONDS:-900}
+      LOGIN_MAX_PAIR_ATTEMPTS: ${LOGIN_MAX_PAIR_ATTEMPTS:-8}
+      LOGIN_MAX_IP_ATTEMPTS: ${LOGIN_MAX_IP_ATTEMPTS:-60}
+      ACCOUNT_LOCKOUT_THRESHOLD: ${ACCOUNT_LOCKOUT_THRESHOLD:-5}
+      ACCOUNT_LOCKOUT_SECONDS: ${ACCOUNT_LOCKOUT_SECONDS:-900}
+      MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY:-change-me-mfa-encryption-local-only}
+      MFA_RECOVERY_PEPPER: ${MFA_RECOVERY_PEPPER:-change-me-mfa-recovery-local-only}
+      MFA_CHALLENGE_TTL_SECONDS: ${MFA_CHALLENGE_TTL_SECONDS:-300}
+      MFA_CHALLENGE_MAX_ATTEMPTS: ${MFA_CHALLENGE_MAX_ATTEMPTS:-5}
+      IDENTITY_DELIVERY_ENCRYPTION_KEY: ${IDENTITY_DELIVERY_ENCRYPTION_KEY:-change-me-delivery-encryption-local-only}
+      IDENTITY_DELIVERY_FINGERPRINT_KEY: ${IDENTITY_DELIVERY_FINGERPRINT_KEY:-change-me-delivery-fingerprint-local-only}
+      IDENTITY_REQUEST_THROTTLE_KEY: ${IDENTITY_REQUEST_THROTTLE_KEY:-change-me-identity-request-throttle-local-only}
+      IDENTITY_REQUEST_WINDOW_SECONDS: ${IDENTITY_REQUEST_WINDOW_SECONDS:-3600}
+      IDENTITY_MAX_PAIR_REQUESTS: ${IDENTITY_MAX_PAIR_REQUESTS:-5}
+      IDENTITY_MAX_IP_REQUESTS: ${IDENTITY_MAX_IP_REQUESTS:-30}
+      EMAIL_VERIFICATION_TTL_HOURS: ${EMAIL_VERIFICATION_TTL_HOURS:-24}
+      PASSWORD_RESET_TTL_MINUTES: ${PASSWORD_RESET_TTL_MINUTES:-60}
+      TENANT_INVITATION_TTL_HOURS: ${TENANT_INVITATION_TTL_HOURS:-168}
+      TENANT_CONTEXT_HEADER: ${TENANT_CONTEXT_HEADER:-X-Crystell-Tenant}
       AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai:8000}
     ports:
       - "3001:3001"
@@ -76,9 +104,17 @@ services:
     command: ["bundle", "exec", "sidekiq"]
     environment:
       RAILS_ENV: development
-      DATABASE_URL: ${DATABASE_URL:-postgresql://crystell:change-me-local-only@postgres:5432/crystell_development}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://crystell_app:change-me-app-local-only@postgres:5432/crystell_development}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REDIS_POOL_SIZE: ${REDIS_POOL_SIZE:-10}
+      REDIS_POOL_TIMEOUT: ${REDIS_POOL_TIMEOUT:-1}
       SECRET_KEY_BASE: ${APP_SECRET_KEY_BASE:-change-me-local-only}
+      SESSION_METADATA_KEY: ${SESSION_METADATA_KEY:-change-me-session-metadata-local-only}
+      LOGIN_THROTTLE_KEY: ${LOGIN_THROTTLE_KEY:-change-me-login-throttle-local-only}
+      MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY:-change-me-mfa-encryption-local-only}
+      MFA_RECOVERY_PEPPER: ${MFA_RECOVERY_PEPPER:-change-me-mfa-recovery-local-only}
+      IDENTITY_DELIVERY_ENCRYPTION_KEY: ${IDENTITY_DELIVERY_ENCRYPTION_KEY:-change-me-delivery-encryption-local-only}
+      IDENTITY_DELIVERY_FINGERPRINT_KEY: ${IDENTITY_DELIVERY_FINGERPRINT_KEY:-change-me-delivery-fingerprint-local-only}
       AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai:8000}
     depends_on:
       api:

@@ -18,7 +18,7 @@ jobs:
   validate-compose:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Validate Docker Compose
         working-directory: crystell
         run: docker compose --env-file .env.example config
@@ -26,13 +26,20 @@ jobs:
   web:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
+          package-manager-cache: false
       - name: Install web dependencies
         working-directory: crystell/apps/web
         run: npm install
+      - name: Audit production web dependencies
+        working-directory: crystell/apps/web
+        run: npm audit --omit=dev --audit-level=high
+      - name: Type-check web
+        working-directory: crystell/apps/web
+        run: npm run typecheck
       - name: Build web
         working-directory: crystell/apps/web
         run: npm run build
@@ -43,7 +50,7 @@ jobs:
   api:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Build API container
         working-directory: crystell/apps/api
         run: docker build -t crystell-api:ci .
@@ -51,7 +58,7 @@ jobs:
   ai-service:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -69,13 +76,31 @@ jobs:
     runs-on: ubuntu-latest
     needs: [validate-compose, web, api, ai-service]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Start full Crystell stack
         working-directory: crystell
-        run: docker compose --env-file .env.example up -d --build
+        run: ACCOUNT_LOCKOUT_SECONDS=2 docker compose --env-file .env.example up -d --build
       - name: Run health and readiness smoke tests
         working-directory: crystell
         run: sh scripts/smoke.sh
+      - name: Verify identity, MFA, tenant authorization and sessions
+        working-directory: crystell
+        run: python3 scripts/identity_smoke.py
+      - name: Verify persistent account lockout
+        working-directory: crystell
+        run: python3 scripts/lockout_smoke.py
+      - name: Verify tenant and identity security boundaries
+        working-directory: crystell
+        run: |
+          docker compose exec -T \
+            -e RAILS_ENV=test \
+            -e DATABASE_URL=postgresql://crystell_app:change-me-app-local-only@postgres:5432/crystell_development \
+            api bundle exec rspec \
+              spec/services/tenant_scope_spec.rb \
+              spec/services/tenant_permission_spec.rb \
+              spec/services/identity_delivery_spec.rb \
+              spec/services/tenant_invitation_and_ownership_spec.rb \
+              spec/services/tenant_resource_boundaries_spec.rb
       - name: Print service logs on failure
         if: failure()
         working-directory: crystell
