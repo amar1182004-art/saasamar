@@ -60,7 +60,7 @@ RSpec.describe "Catalog and inventory API permissions", type: :request do
 
   it "allows owner and admin catalog management while keeping members read-only" do
     post products_path,
-         params: product_payload,
+         params: product_payload("owner"),
          headers: headers(@owner_token)
     expect(response).to have_http_status(:created)
     product = JSON.parse(response.body).fetch("product")
@@ -71,19 +71,19 @@ RSpec.describe "Catalog and inventory API permissions", type: :request do
     expect(JSON.parse(response.body).fetch("products").map { |item| item.fetch("id") }).to include(product.fetch("id"))
 
     post products_path,
-         params: product_payload.merge(product: product_payload.fetch(:product).merge(slug: "member-forbidden-#{unique}")),
+         params: product_payload("member-forbidden"),
          headers: headers(@member_token)
     expect(response).to have_http_status(:forbidden)
 
     post products_path,
-         params: product_payload.merge(product: product_payload.fetch(:product).merge(slug: "admin-created-#{unique}")),
+         params: product_payload("admin"),
          headers: headers(@admin_token)
     expect(response).to have_http_status(:created)
   end
 
   it "allows inventory management for admins, read access for members and no member mutations" do
     post products_path,
-         params: product_payload,
+         params: product_payload("inventory"),
          headers: headers(@owner_token)
     expect(response).to have_http_status(:created)
     variant_id = JSON.parse(response.body).dig("product", "variants", 0, "id")
@@ -158,17 +158,17 @@ RSpec.describe "Catalog and inventory API permissions", type: :request do
     "/v1/stores/#{@store.id}/inventory/adjustments"
   end
 
-  def product_payload
+  def product_payload(suffix)
     {
       product: {
-        title: "API Product #{unique}",
-        slug: "api-product-#{unique}",
+        title: "API Product #{suffix} #{unique}",
+        slug: "api-product-#{suffix}-#{unique}",
         status: "active"
       },
       variants: [
         {
           title: "Default",
-          sku: "API-SKU-#{unique}",
+          sku: "API-SKU-#{suffix}-#{unique}",
           currency: "EGP",
           price_cents: 25_000
         }
