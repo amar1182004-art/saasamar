@@ -115,6 +115,25 @@ RSpec.describe "Billing foundation" do
     end
   end
 
+  it "schedules and reverts period-end cancellation with an auditable lifecycle" do
+    TenantAccess.with(user: @owner_a, tenant_id: @tenant_a.tenant_id) do
+      provisioned = Billing::SubscriptionProvisioner.call(price_id: @price_id)
+
+      canceled = Billing::SubscriptionLifecycle.schedule_cancellation
+      expect(canceled.subscription_id).to eq(provisioned.subscription_id)
+      expect(canceled.cancel_at_period_end).to be(true)
+      expect(Subscription.find(provisioned.subscription_id).cancel_at_period_end).to be(true)
+
+      resumed = Billing::SubscriptionLifecycle.resume
+      expect(resumed.subscription_id).to eq(provisioned.subscription_id)
+      expect(resumed.cancel_at_period_end).to be(false)
+      expect(Subscription.find(provisioned.subscription_id).cancel_at_period_end).to be(false)
+
+      expect(BillingEvent.where(event_type: "subscription.cancellation_scheduled").count).to eq(1)
+      expect(BillingEvent.where(event_type: "subscription.cancellation_reverted").count).to eq(1)
+    end
+  end
+
   it "isolates subscription data and rejects cross-tenant billing writes at PostgreSQL" do
     TenantAccess.with(user: @owner_a, tenant_id: @tenant_a.tenant_id) do
       Billing::SubscriptionProvisioner.call(price_id: @price_id)
