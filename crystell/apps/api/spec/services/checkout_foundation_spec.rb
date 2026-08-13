@@ -29,10 +29,12 @@ RSpec.describe "Checkout foundation" do
 
     TenantAccess.with(user: @owner_a, tenant_id: @tenant_a.tenant_id) do
       @store_a = Store.find_by!(slug: "checkout-store-a-#{unique}")
+      @store_a.update!(status: "active")
       @product_a, @variant_a = create_product!(store: @store_a, suffix: "a", price_cents: 12_500)
     end
     TenantAccess.with(user: @owner_b, tenant_id: @tenant_b.tenant_id) do
       @store_b = Store.find_by!(slug: "checkout-store-b-#{unique}")
+      @store_b.update!(status: "active")
       @product_b, @variant_b = create_product!(store: @store_b, suffix: "b", price_cents: 99_900)
     end
   end
@@ -117,6 +119,16 @@ RSpec.describe "Checkout foundation" do
       end.to raise_error(Commerce::CartManager::InvalidCartError, /expired/)
 
       expect(Cart.find(created.cart.id).status).to eq("expired")
+    end
+  end
+
+  it "refuses cart creation while the store is not active" do
+    TenantAccess.with(user: @owner_a, tenant_id: @tenant_a.tenant_id) do
+      @store_a.update!(status: "draft")
+
+      expect do
+        Commerce::CartManager.create(store_id: @store_a.id)
+      end.to raise_error(ActiveRecord::RecordNotFound)
     end
   end
 
