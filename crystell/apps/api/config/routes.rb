@@ -25,6 +25,15 @@ Rails.application.routes.draw do
       end
     end
 
+    namespace :billing do
+      resources :plans, only: :index
+      resource :subscription, only: %i[show create destroy] do
+        post :resume
+      end
+      resources :invoices, only: :index
+      resources :entitlements, only: :index
+    end
+
     resources :tenant_invitations, only: %i[index create destroy]
     post "/invitations/accept", to: "invitations#accept"
     post "/tenant/ownership-transfer", to: "tenant_ownership#transfer"
