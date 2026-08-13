@@ -8,6 +8,12 @@ import {
   setSessionCookie,
 } from "@/lib/server/auth-cookies";
 import { crystellApi } from "@/lib/server/crystell-api";
+import {
+  contentLengthExceeds,
+  readObjectString,
+  safeApiError,
+  safeErrorStatus,
+} from "@/lib/server/request-input";
 
 type MerchantLoginApiResponse = {
   token?: string;
@@ -21,13 +27,13 @@ type MerchantLoginApiResponse = {
 const MAX_BODY_BYTES = 16_384;
 
 export async function POST(request: NextRequest) {
-  if (requestBodyTooLarge(request)) {
+  if (contentLengthExceeds(request.headers, MAX_BODY_BYTES)) {
     return NextResponse.json({ error: "request_too_large" }, { status: 413 });
   }
 
   const payload = await request.json().catch(() => null);
-  const email = readString(payload, "email", 320);
-  const password = readString(payload, "password", 512);
+  const email = readObjectString(payload, "email", { maxLength: 320 });
+  const password = readObjectString(payload, "password", { maxLength: 512, trim: false });
 
   if (!email || !password) {
     return NextResponse.json({ error: "email_and_password_required" }, { status: 422 });
@@ -58,8 +64,8 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json(
-    { error: safeError(result.data?.error, "merchant_authentication_failed") },
-    { status: safeStatus(result.status) },
+    { error: safeApiError(result.data?.error, "merchant_authentication_failed") },
+    { status: safeErrorStatus(result.status) },
   );
 
   if (result.retryAfter) {
@@ -67,25 +73,4 @@ export async function POST(request: NextRequest) {
   }
 
   return response;
-}
-
-function requestBodyTooLarge(request: NextRequest) {
-  const contentLength = Number(request.headers.get("content-length") ?? 0);
-  return Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES;
-}
-
-function readString(payload: unknown, key: string, maxLength: number) {
-  if (!payload || typeof payload !== "object") return null;
-  const value = (payload as Record<string, unknown>)[key];
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 && trimmed.length <= maxLength ? trimmed : null;
-}
-
-function safeError(value: string | undefined, fallback: string) {
-  return value && /^[a-z0-9_]+$/.test(value) ? value : fallback;
-}
-
-function safeStatus(status: number) {
-  return status >= 400 && status <= 599 ? status : 502;
 }
