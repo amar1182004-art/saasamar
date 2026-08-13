@@ -82,7 +82,7 @@ jobs:
       - name: Verify persistent account lockout
         working-directory: crystell
         run: python3 scripts/lockout_smoke.py
-      - name: Verify tenant and permission boundaries
+      - name: Verify tenant, permission and identity-token boundaries
         working-directory: crystell
         run: |
           docker compose exec -T \
@@ -90,7 +90,8 @@ jobs:
             -e DATABASE_URL=postgresql://crystell_app:change-me-app-local-only@postgres:5432/crystell_development \
             api bundle exec rspec \
               spec/services/tenant_scope_spec.rb \
-              spec/services/tenant_permission_spec.rb
+              spec/services/tenant_permission_spec.rb \
+              spec/services/identity_delivery_spec.rb
       - name: Print service logs on failure
         if: failure()
         working-directory: crystell
