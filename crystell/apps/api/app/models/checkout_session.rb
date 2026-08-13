@@ -2,6 +2,7 @@ class CheckoutSession < ApplicationRecord
   belongs_to :tenant
   belongs_to :store
   belongs_to :cart
+  belongs_to :selected_shipping_rate_quote, class_name: "ShippingRateQuote", optional: true
   has_many :checkout_line_items
   has_many :checkout_inventory_reservations, dependent: :restrict_with_exception
   has_one :order
