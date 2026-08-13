@@ -53,6 +53,12 @@ Rails.application.routes.draw do
     put "/stores/:store_id/catalog/products/:product_id/variants/:id", to: "catalog/variants#update"
     delete "/stores/:store_id/catalog/products/:product_id/variants/:id", to: "catalog/variants#destroy"
 
+    get "/stores/:store_id/catalog/products/:product_id/media", to: "catalog/media#index"
+    post "/stores/:store_id/catalog/products/:product_id/media", to: "catalog/media#create"
+    post "/stores/:store_id/catalog/products/:product_id/media/:id/complete", to: "catalog/media#complete"
+    get "/stores/:store_id/catalog/products/:product_id/media/:id/preview", to: "catalog/media#preview"
+    delete "/stores/:store_id/catalog/products/:product_id/media/:id", to: "catalog/media#destroy"
+
     get "/stores/:store_id/catalog/categories", to: "catalog/categories#index"
     post "/stores/:store_id/catalog/categories", to: "catalog/categories#create"
     patch "/stores/:store_id/catalog/categories/:id", to: "catalog/categories#update"
