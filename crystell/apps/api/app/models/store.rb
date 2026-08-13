@@ -1,5 +1,6 @@
 class Store < ApplicationRecord
   belongs_to :tenant
+  has_one :storefront_configuration, dependent: :destroy
 
   normalizes :slug, with: ->(slug) { slug.strip.downcase }
 

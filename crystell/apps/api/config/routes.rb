@@ -41,6 +41,11 @@ Rails.application.routes.draw do
     get "/me", to: "me#show"
     resources :stores, only: :index
 
+    get "/stores/:store_id/storefront", to: "storefront#show"
+    patch "/stores/:store_id/storefront", to: "storefront#update"
+    put "/stores/:store_id/storefront", to: "storefront#update"
+    post "/stores/:store_id/storefront/publish", to: "storefront#publish"
+
     get "/stores/:store_id/catalog/products", to: "catalog/products#index"
     post "/stores/:store_id/catalog/products", to: "catalog/products#create"
     get "/stores/:store_id/catalog/products/:id", to: "catalog/products#show"
