@@ -164,6 +164,15 @@ RSpec.describe "Billing foundation" do
     end
   end
 
+  it "classifies the application role as runtime without classifying the migration admin as runtime" do
+    runtime = PG.connect(ENV.fetch("DATABASE_URL"))
+
+    expect(@admin.exec("SELECT crystell.current_role_is_runtime()").getvalue(0, 0)).to eq("f")
+    expect(runtime.exec("SELECT crystell.current_role_is_runtime()").getvalue(0, 0)).to eq("t")
+  ensure
+    runtime&.close
+  end
+
   it "does not allow the merchant runtime role to mutate the global plan catalog" do
     expect do
       BillingPlan.create!(code: "forbidden-#{unique}", name: "Forbidden", status: "active")
