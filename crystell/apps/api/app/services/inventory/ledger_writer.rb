@@ -28,26 +28,23 @@ module Inventory
       raise InvalidChangeError, "reason is required" if reason.blank?
       raise InvalidChangeError, "idempotency key is required" if idempotency_key.blank?
 
-      row = nil
-      ApplicationRecord.transaction(requires_new: true) do
-        connection = ApplicationRecord.connection
-        sql = <<~SQL
-          SELECT *
-          FROM crystell.apply_inventory_change(
-            #{connection.quote(store_id)}::uuid,
-            #{connection.quote(inventory_location_id)}::uuid,
-            #{connection.quote(product_variant_id)}::uuid,
-            #{connection.quote(on_hand_delta)}::bigint,
-            #{connection.quote(reserved_delta)}::bigint,
-            #{connection.quote(reason.to_s)}::text,
-            #{connection.quote(idempotency_key.to_s)}::text,
-            #{connection.quote(reference_type)}::text,
-            #{connection.quote(reference_id)}::uuid,
-            #{connection.quote(metadata.to_json)}::jsonb
-          )
-        SQL
-        row = connection.select_one(sql)
-      end
+      connection = ApplicationRecord.connection
+      sql = <<~SQL
+        SELECT *
+        FROM crystell.apply_inventory_change(
+          #{connection.quote(store_id)}::uuid,
+          #{connection.quote(inventory_location_id)}::uuid,
+          #{connection.quote(product_variant_id)}::uuid,
+          #{connection.quote(on_hand_delta)}::bigint,
+          #{connection.quote(reserved_delta)}::bigint,
+          #{connection.quote(reason.to_s)}::text,
+          #{connection.quote(idempotency_key.to_s)}::text,
+          #{connection.quote(reference_type)}::text,
+          #{connection.quote(reference_id)}::uuid,
+          #{connection.quote(metadata.to_json)}::jsonb
+        )
+      SQL
+      row = connection.select_one(sql)
 
       Result.new(
         recorded: ActiveModel::Type::Boolean.new.cast(row.fetch("recorded")),
