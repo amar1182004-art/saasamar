@@ -48,7 +48,7 @@ module Checkout
           metadata: {}
         )
 
-        CheckoutLineItem.where(checkout_session_id: checkout.id).order(:created_at, :id).find_each do |line|
+        CheckoutLineItem.where(checkout_session_id: checkout.id).order(:created_at, :id).to_a.each do |line|
           OrderItem.create!(
             tenant_id: Current.tenant_id,
             store_id: checkout.store_id,
