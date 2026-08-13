@@ -13,5 +13,6 @@ Rails.application.config.filter_parameters += %i[
   authorization
   secret
   encrypted_secret
+  encrypted_payload
   api_key
 ]
