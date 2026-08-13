@@ -75,7 +75,7 @@ module Billing
 
     def self.commission_amount(affiliate:, invoice:)
       if affiliate.commission_type == "percentage"
-        (invoice.total_cents * affiliate.percentage_basis_points / 10_000.0).floor
+        invoice.total_cents.to_i * affiliate.percentage_basis_points.to_i / 10_000
       else
         raise InvalidAffiliateError, "affiliate commission currency does not match invoice" unless affiliate.currency == invoice.currency
 
