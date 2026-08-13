@@ -228,7 +228,7 @@ RSpec.describe "Payment foundation" do
         raw_body: raw_body,
         headers: { "X-Crystell-Signature" => "not-a-valid-signature" }
       )
-    end.to raise_error(Payment::Adapters::ReferenceHmac::InvalidSignatureError)
+    end.to raise_error(Payment::Adapters::InvalidSignatureError)
 
     TenantAccess.with(user: @owner, tenant_id: @registration.tenant_id) do
       expect(PaymentWebhookEvent.where(payment_provider_account_id: @account.id).count).to eq(before_count)
