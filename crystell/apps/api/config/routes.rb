@@ -8,6 +8,8 @@ Rails.application.routes.draw do
       resource :me, only: :show, controller: "me"
       resource :elevation, only: :create
       resources :tenants, only: %i[index show]
+      get "/audit-events", to: "audit_events#index"
+      resource :security, only: :show, controller: "security"
     end
   end
 
