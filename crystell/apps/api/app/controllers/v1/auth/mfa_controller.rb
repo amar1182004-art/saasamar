@@ -49,6 +49,38 @@ module V1
       rescue ::Auth::MfaVerifier::InvalidCodeError
         render json: { error: "invalid_mfa_code" }, status: :unauthorized
       end
+
+      def regenerate_recovery_codes
+        codes = ::Auth::MfaManagement.regenerate_recovery_codes!(
+          user: Current.user,
+          current_session_id: Current.session.id,
+          password: params[:password],
+          code: params[:code],
+          recovery_code: params[:recovery_code]
+        )
+
+        render json: { recovery_codes: codes }, status: :ok
+      rescue ::Auth::SensitiveReauthentication::FailedError
+        render json: { error: "reauthentication_failed" }, status: :unauthorized
+      rescue ::Auth::MfaManagement::NotEnabledError
+        render json: { error: "mfa_not_enabled" }, status: :conflict
+      end
+
+      def destroy
+        ::Auth::MfaManagement.disable!(
+          user: Current.user,
+          current_session_id: Current.session.id,
+          password: params[:password],
+          code: params[:code],
+          recovery_code: params[:recovery_code]
+        )
+
+        head :no_content
+      rescue ::Auth::SensitiveReauthentication::FailedError
+        render json: { error: "reauthentication_failed" }, status: :unauthorized
+      rescue ::Auth::MfaManagement::NotEnabledError
+        render json: { error: "mfa_not_enabled" }, status: :conflict
+      end
     end
   end
 end
