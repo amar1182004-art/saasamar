@@ -108,6 +108,38 @@ RSpec.describe "Shipping foundation" do
     end
   end
 
+  it "cancels a cancellable shipment idempotently and records one cancellation event" do
+    TenantAccess.with(user: @owner, tenant_id: @registration.tenant_id) do
+      quote = Shipping::RateQuoter.call(
+        checkout_session_id: @checkout.id,
+        shipping_provider_account_id: @account.id,
+        destination: { country_code: "EG", city: "Cairo" }
+      ).first
+      Shipping::QuoteSelector.call(
+        checkout_session_id: @checkout.id,
+        shipping_rate_quote_id: quote.id,
+        shipping_address: { country_code: "EG", city: "Cairo", address1: "Test Street" }
+      )
+      order = Checkout::OrderPlacer.call(checkout_session_id: @checkout.id)
+      shipment = Shipping::ShipmentCreator.call(order_id: order.id, idempotency_key: "shipment-cancel-#{unique}")
+
+      first = Shipping::ShipmentCanceller.call(
+        store_id: @store.id,
+        shipment_id: shipment.id,
+        reason: "customer_requested"
+      )
+      second = Shipping::ShipmentCanceller.call(
+        store_id: @store.id,
+        shipment_id: shipment.id,
+        reason: "duplicate_retry"
+      )
+
+      expect(first.status).to eq("cancelled")
+      expect(second.status).to eq("cancelled")
+      expect(ShipmentEvent.where(shipment_id: shipment.id, event_type: "shipment_cancelled").count).to eq(1)
+    end
+  end
+
   it "rejects selecting a quote that belongs to another checkout" do
     TenantAccess.with(user: @owner, tenant_id: @registration.tenant_id) do
       quote = Shipping::RateQuoter.call(
