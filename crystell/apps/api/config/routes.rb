@@ -52,6 +52,7 @@ Rails.application.routes.draw do
 
     get "/me", to: "me#show"
     resources :stores, only: :index
+    get "/stores/:store_id/dashboard", to: "dashboard#show"
 
     get "/stores/:store_id/storefront", to: "storefront#show"
     patch "/stores/:store_id/storefront", to: "storefront#update"
