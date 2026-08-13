@@ -6,6 +6,7 @@ class TenantAccess
 
     previous_user = Current.user
     previous_tenant_id = Current.tenant_id
+    previous_membership = Current.membership
 
     ActiveRecord::Base.transaction(requires_new: true) do
       connection = ActiveRecord::Base.connection
@@ -21,10 +22,13 @@ class TenantAccess
 
       Current.user = user
       Current.tenant_id = tenant_id.to_s
+      Current.membership = membership
+
       yield membership
     ensure
       Current.user = previous_user
       Current.tenant_id = previous_tenant_id
+      Current.membership = previous_membership
     end
   end
 end
