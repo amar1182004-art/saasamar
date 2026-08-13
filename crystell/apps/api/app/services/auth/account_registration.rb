@@ -4,6 +4,7 @@ module Auth
   class AccountRegistration
     class ValidationError < StandardError; end
     class ConflictError < StandardError; end
+    class DeliveryError < StandardError; end
 
     Result = Data.define(:user_id, :tenant_id, :store_id)
     SLUG_PATTERN = /\A[a-z0-9]+(?:-[a-z0-9]+)*\z/
@@ -36,13 +37,23 @@ module Auth
         query_attribute("store_slug", store_slug)
       ]
 
-      row = connection.exec_query(
-        <<~SQL.squish,
-          SELECT * FROM crystell.create_initial_account($1, $2, $3, $4, $5, $6)
-        SQL
-        "CreateInitialAccount",
-        binds
-      ).first
+      row = ActiveRecord::Base.transaction do
+        created = connection.exec_query(
+          <<~SQL.squish,
+            SELECT * FROM crystell.create_initial_account($1, $2, $3, $4, $5, $6)
+          SQL
+          "CreateInitialAccount",
+          binds
+        ).first
+
+        verification = IdentityDelivery.request(
+          email: email,
+          purpose: "email_verification"
+        )
+        raise DeliveryError, "unable to queue email verification" unless verification.queued
+
+        created
+      end
 
       Result.new(
         user_id: row.fetch("user_id"),
