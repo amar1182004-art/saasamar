@@ -2,6 +2,7 @@ module Shipping
   class WebhookEventProcessor
     class MissingTenantContextError < StandardError; end
 
+    VALID_STATUSES = %w[pending submitted label_ready in_transit delivered failed cancelled].freeze
     ALLOWED_TRANSITIONS = {
       "pending" => %w[submitted label_ready in_transit delivered failed cancelled],
       "submitted" => %w[label_ready in_transit delivered failed cancelled],
@@ -29,7 +30,7 @@ module Shipping
         end
 
         incoming_status = parsed.status.to_s
-        unless Shipment.validators_on(:status).any? { |validator| validator.options[:in]&.include?(incoming_status) }
+        unless VALID_STATUSES.include?(incoming_status)
           locked_event.update!(shipment_id: shipment.id, status: "ignored", processed_at: now, failure_reason: "unsupported_status")
           return locked_event
         end
@@ -40,11 +41,25 @@ module Shipping
           return locked_event
         end
 
+        occurred_at = parsed.occurred_at || now
+        timestamp_updates = case incoming_status
+        when "in_transit"
+          { shipped_at: shipment.shipped_at || occurred_at }
+        when "delivered"
+          { shipped_at: shipment.shipped_at || occurred_at, delivered_at: shipment.delivered_at || occurred_at }
+        when "cancelled"
+          { cancelled_at: shipment.cancelled_at || occurred_at }
+        else
+          {}
+        end
+
         shipment.update!(
-          status: incoming_status,
-          tracking_number: parsed.tracking_number.presence || shipment.tracking_number,
-          tracking_url: parsed.tracking_url.presence || shipment.tracking_url,
-          metadata: shipment.metadata.merge(parsed.metadata.to_h)
+          {
+            status: incoming_status,
+            tracking_number: parsed.tracking_number.presence || shipment.tracking_number,
+            tracking_url: parsed.tracking_url.presence || shipment.tracking_url,
+            metadata: shipment.metadata.merge(parsed.metadata.to_h)
+          }.merge(timestamp_updates)
         )
 
         ShipmentEvent.create!(
@@ -52,10 +67,11 @@ module Shipping
           store_id: shipment.store_id,
           shipment_id: shipment.id,
           event_type: parsed.event_type,
+          provider_event_id: locked_event.provider_event_id,
           status: incoming_status,
-          occurred_at: parsed.occurred_at || now,
+          occurred_at: occurred_at,
           message: parsed.message.presence,
-          metadata: parsed.metadata.to_h.merge("provider_event_id" => locked_event.provider_event_id)
+          metadata: parsed.metadata.to_h
         )
 
         locked_event.update!(
