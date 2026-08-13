@@ -24,13 +24,16 @@ module Shipping
         result = AdapterRegistry.build(account).cancel_shipment(shipment: shipment)
         raise CancellationNotAllowedError, "provider did not cancel shipment" unless result.status == "cancelled"
 
+        metadata = shipment.metadata.merge(result.metadata || {})
+        metadata["cancellation_reason"] = reason.to_s if reason.present?
+
         shipment.update!(
           status: "cancelled",
           tracking_number: result.tracking_number || shipment.tracking_number,
           tracking_url: result.tracking_url || shipment.tracking_url,
           label_url: result.label_url || shipment.label_url,
-          metadata: shipment.metadata.merge(result.metadata || {}).merge("cancellation_reason" => reason.to_s.presence),
-          updated_at: now
+          metadata: metadata,
+          cancelled_at: shipment.cancelled_at || now
         )
 
         ShipmentEvent.create!(
