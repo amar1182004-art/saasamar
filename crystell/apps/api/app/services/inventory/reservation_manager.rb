@@ -21,24 +21,13 @@ module Inventory
         existing = InventoryReservation.find_by(tenant_id: Current.tenant_id, idempotency_key: idempotency_key)
         if existing
           verify_same_reservation!(existing, store_id, inventory_location_id, product_variant_id, requested_quantity)
-          level = level_for(existing)
-          result = build_result(false, existing, level)
+          result = build_existing_result(existing)
           next
         end
 
         store = Store.find(store_id)
         location = InventoryLocation.find_by!(id: inventory_location_id, store_id: store.id, status: "active")
         variant = ProductVariant.find_by!(id: product_variant_id, store_id: store.id, status: "active")
-
-        level = InventoryLevel.create_or_find_by!(
-          tenant_id: Current.tenant_id,
-          store_id: store.id,
-          inventory_location_id: location.id,
-          product_variant_id: variant.id
-        )
-        level.lock!
-
-        raise InsufficientStockError, "not enough available inventory" if level.available < requested_quantity
 
         reservation = InventoryReservation.create!(
           tenant_id: Current.tenant_id,
@@ -54,18 +43,20 @@ module Inventory
           metadata: metadata
         )
 
-        level.update!(reserved: level.reserved + requested_quantity)
-        append_ledger!(
-          level: level,
+        ledger = LedgerWriter.call(
+          store_id: store.id,
+          inventory_location_id: location.id,
+          product_variant_id: variant.id,
           delta_on_hand: 0,
           delta_reserved: requested_quantity,
           reason: "reservation.created",
           idempotency_key: "reservation:#{reservation.id}:created",
           reference_type: "InventoryReservation",
-          reference_id: reservation.id
+          reference_id: reservation.id,
+          metadata: {}
         )
 
-        result = build_result(true, reservation, level)
+        result = build_ledger_result(true, reservation, ledger)
       end
 
       result
@@ -74,7 +65,11 @@ module Inventory
 
       existing = InventoryReservation.find_by!(tenant_id: Current.tenant_id, idempotency_key: idempotency_key)
       verify_same_reservation!(existing, store_id, inventory_location_id, product_variant_id, requested_quantity)
-      build_result(false, existing, level_for(existing))
+      build_existing_result(existing)
+    rescue LedgerWriter::InsufficientStockError => error
+      raise InsufficientStockError, error.message
+    rescue LedgerWriter::IdempotencyConflictError => error
+      raise IdempotencyConflictError, error.message
     end
 
     def self.release(reservation_id:)
@@ -91,34 +86,34 @@ module Inventory
       result = nil
       ApplicationRecord.transaction(requires_new: true) do
         reservation = InventoryReservation.lock.find(reservation_id)
-        level = level_for(reservation, lock: true)
 
         if reservation.status == "consumed"
-          result = build_result(false, reservation, level)
+          result = build_existing_result(reservation)
           next
         end
         raise InvalidTransitionError, "only active reservations can be consumed" unless reservation.status == "active"
 
-        new_on_hand = level.on_hand - reservation.quantity
-        new_reserved = level.reserved - reservation.quantity
-        raise InsufficientStockError, "reservation exceeds on-hand inventory" if new_on_hand.negative?
-        raise InvalidTransitionError, "reservation accounting is inconsistent" if new_reserved.negative?
-
-        level.update!(on_hand: new_on_hand, reserved: new_reserved)
-        reservation.update!(status: "consumed", consumed_at: Time.current)
-        append_ledger!(
-          level: level,
+        ledger = LedgerWriter.call(
+          store_id: reservation.store_id,
+          inventory_location_id: reservation.inventory_location_id,
+          product_variant_id: reservation.product_variant_id,
           delta_on_hand: -reservation.quantity,
           delta_reserved: -reservation.quantity,
           reason: "reservation.consumed",
           idempotency_key: "reservation:#{reservation.id}:consumed",
           reference_type: "InventoryReservation",
-          reference_id: reservation.id
+          reference_id: reservation.id,
+          metadata: {}
         )
 
-        result = build_result(true, reservation, level)
+        reservation.update!(status: "consumed", consumed_at: Time.current)
+        result = build_ledger_result(true, reservation, ledger)
       end
       result
+    rescue LedgerWriter::InsufficientStockError => error
+      raise InsufficientStockError, error.message
+    rescue LedgerWriter::IdempotencyConflictError, LedgerWriter::InconsistentStateError => error
+      raise InvalidTransitionError, error.message
     end
 
     def self.transition(reservation_id:, target_status:)
@@ -127,36 +122,35 @@ module Inventory
       result = nil
       ApplicationRecord.transaction(requires_new: true) do
         reservation = InventoryReservation.lock.find(reservation_id)
-        level = level_for(reservation, lock: true)
 
         if reservation.status == target_status
-          result = build_result(false, reservation, level)
+          result = build_existing_result(reservation)
           next
         end
         raise InvalidTransitionError, "only active reservations can be #{target_status}" unless reservation.status == "active"
 
-        new_reserved = level.reserved - reservation.quantity
-        raise InvalidTransitionError, "reservation accounting is inconsistent" if new_reserved.negative?
-
-        level.update!(reserved: new_reserved)
-        timestamp = Time.current
-        attributes = { status: target_status }
-        attributes[:released_at] = timestamp if target_status == "released"
-        reservation.update!(attributes)
-
-        append_ledger!(
-          level: level,
+        ledger = LedgerWriter.call(
+          store_id: reservation.store_id,
+          inventory_location_id: reservation.inventory_location_id,
+          product_variant_id: reservation.product_variant_id,
           delta_on_hand: 0,
           delta_reserved: -reservation.quantity,
           reason: "reservation.#{target_status}",
           idempotency_key: "reservation:#{reservation.id}:#{target_status}",
           reference_type: "InventoryReservation",
-          reference_id: reservation.id
+          reference_id: reservation.id,
+          metadata: {}
         )
 
-        result = build_result(true, reservation, level)
+        attributes = { status: target_status }
+        attributes[:released_at] = Time.current if target_status == "released"
+        reservation.update!(attributes)
+
+        result = build_ledger_result(true, reservation, ledger)
       end
       result
+    rescue LedgerWriter::InsufficientStockError, LedgerWriter::IdempotencyConflictError, LedgerWriter::InconsistentStateError => error
+      raise InvalidTransitionError, error.message
     end
     private_class_method :transition
 
@@ -178,39 +172,16 @@ module Inventory
     end
     private_class_method :verify_same_reservation!
 
-    def self.level_for(reservation, lock: false)
-      scope = InventoryLevel.where(
+    def self.build_existing_result(reservation)
+      level = InventoryLevel.find_by!(
         tenant_id: Current.tenant_id,
         store_id: reservation.store_id,
         inventory_location_id: reservation.inventory_location_id,
         product_variant_id: reservation.product_variant_id
       )
-      scope = scope.lock if lock
-      scope.first!
-    end
-    private_class_method :level_for
 
-    def self.append_ledger!(level:, delta_on_hand:, delta_reserved:, reason:, idempotency_key:, reference_type:, reference_id:)
-      InventoryLedgerEntry.create!(
-        tenant_id: Current.tenant_id,
-        store_id: level.store_id,
-        inventory_location_id: level.inventory_location_id,
-        product_variant_id: level.product_variant_id,
-        delta_on_hand: delta_on_hand,
-        delta_reserved: delta_reserved,
-        reason: reason,
-        reference_type: reference_type,
-        reference_id: reference_id,
-        actor_user_id: Current.user&.id,
-        idempotency_key: idempotency_key,
-        metadata: {}
-      )
-    end
-    private_class_method :append_ledger!
-
-    def self.build_result(recorded, reservation, level)
       Result.new(
-        recorded: recorded,
+        recorded: false,
         reservation_id: reservation.id,
         status: reservation.status,
         on_hand: level.on_hand,
@@ -218,6 +189,18 @@ module Inventory
         available: level.available
       )
     end
-    private_class_method :build_result
+    private_class_method :build_existing_result
+
+    def self.build_ledger_result(recorded, reservation, ledger)
+      Result.new(
+        recorded: recorded,
+        reservation_id: reservation.id,
+        status: reservation.status,
+        on_hand: ledger.on_hand,
+        reserved: ledger.reserved,
+        available: ledger.available
+      )
+    end
+    private_class_method :build_ledger_result
   end
 end
