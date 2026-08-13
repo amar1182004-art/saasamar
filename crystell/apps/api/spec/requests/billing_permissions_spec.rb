@@ -38,12 +38,14 @@ RSpec.describe "Billing API permissions", type: :request do
     @admin_user = IdentityScope.with(@admin_registration.user_id) { User.find(@admin_registration.user_id) }
     @member_user = IdentityScope.with(@member_registration.user_id) { User.find(@member_registration.user_id) }
 
+    admin_invitation = nil
+    member_invitation = nil
     TenantAccess.with(user: @owner, tenant_id: @owner_registration.tenant_id) do
       admin_invitation = Auth::TenantInvitationIssuer.call(email: @admin_user.email, role: "admin")
       member_invitation = Auth::TenantInvitationIssuer.call(email: @member_user.email, role: "member")
-      Auth::TenantInvitationAcceptor.call(user: @admin_user, token: admin_invitation.token)
-      Auth::TenantInvitationAcceptor.call(user: @member_user, token: member_invitation.token)
     end
+    Auth::TenantInvitationAcceptor.call(user: @admin_user, token: admin_invitation.token)
+    Auth::TenantInvitationAcceptor.call(user: @member_user, token: member_invitation.token)
 
     @owner_token = Auth::SessionIssuer.call(user_id: @owner.id).token
     @admin_token = Auth::SessionIssuer.call(user_id: @admin_user.id).token
