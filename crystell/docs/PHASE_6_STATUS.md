@@ -1,6 +1,6 @@
 # Phase 6 status — Communications and support
 
-Status: in progress. The first Phase 6 implementation increment is ready for CI validation.
+Status: in progress. The first Phase 6 implementation increment passed the complete CI checkpoint on 2026-08-13.
 
 ## Support conversations
 
@@ -39,7 +39,10 @@ Status: in progress. The first Phase 6 implementation increment is ready for CI 
 - React component review: passed after checking hooks, server-action authorization, serialized client props and responsive behavior.
 - `git diff --check`: passed.
 - A request specification now covers tenant visibility, member permissions, signed attachment lifecycle, append-only messages, encrypted idempotent delivery, in-app notifications and bounded control-plane support access.
+- Full-stack health/readiness, identity, MFA, persistent lockout, tenant isolation and commerce regressions: passed.
+- Rails boundary suite: 104 examples, 0 failures.
+- GitHub CI checkpoint: https://github.com/amar1182004-art/saasamar/actions/runs/31699105477
 
-## Remaining exit gate
+## Next increment
 
-Phase 6 is not marked complete until the published branch passes the complete Crystell CI matrix, including the new request specification and all prior identity, commerce and control-plane regressions.
+The Phase 6 branch remains a draft while provider-specific configuration screens and browser-level attachment-flow verification are added. The security, storage, queueing and provider-abstraction foundations are now green.
