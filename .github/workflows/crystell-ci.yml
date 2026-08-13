@@ -107,6 +107,7 @@ jobs:
               spec/services/category_hierarchy_spec.rb \
               spec/services/product_media_spec.rb \
               spec/services/inventory_ledger_authority_spec.rb \
+              spec/services/reservation_expiry_job_spec.rb \
               spec/requests/billing_permissions_spec.rb \
               spec/requests/catalog_inventory_permissions_spec.rb
       - name: Print service logs on failure
