@@ -3,8 +3,8 @@ class ControlPlaneUser < ControlPlaneRecord
 
   has_secure_password
 
-  has_many :control_plane_sessions, dependent: :destroy
-  has_many :control_plane_audit_events, dependent: :nullify
+  has_many :control_plane_sessions, dependent: :restrict_with_exception
+  has_many :control_plane_audit_events, dependent: :restrict_with_exception
 
   normalizes :email, with: ->(email) { email&.strip&.downcase }
 
