@@ -8,6 +8,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-admin-local-only}
       APP_DATABASE_USER: ${APP_DATABASE_USER:-crystell_app}
       APP_DATABASE_PASSWORD: ${APP_DATABASE_PASSWORD:-change-me-app-local-only}
+      CONTROL_PLANE_DATABASE_USER: ${CONTROL_PLANE_DATABASE_USER:-crystell_control_app}
+      CONTROL_PLANE_DATABASE_PASSWORD: ${CONTROL_PLANE_DATABASE_PASSWORD:-change-me-control-local-only}
     ports:
       - "5432:5432"
     volumes:
@@ -73,6 +75,7 @@ services:
       RAILS_ENV: development
       PORT: 3001
       DATABASE_URL: ${DATABASE_URL:-postgresql://crystell_app:change-me-app-local-only@postgres:5432/crystell_development}
+      CONTROL_PLANE_DATABASE_URL: ${CONTROL_PLANE_DATABASE_URL:-postgresql://crystell_control_app:change-me-control-local-only@postgres:5432/crystell_development}
       MIGRATION_DATABASE_URL: ${MIGRATION_DATABASE_URL:-postgresql://crystell_admin:change-me-admin-local-only@postgres:5432/crystell_development}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       REDIS_POOL_SIZE: ${REDIS_POOL_SIZE:-10}
@@ -102,6 +105,13 @@ services:
       TENANT_INVITATION_TTL_HOURS: ${TENANT_INVITATION_TTL_HOURS:-168}
       TENANT_CONTEXT_HEADER: ${TENANT_CONTEXT_HEADER:-X-Crystell-Tenant}
       AFFILIATE_ATTRIBUTION_DAYS: ${AFFILIATE_ATTRIBUTION_DAYS:-30}
+      PAYMENT_SECRETS_KEY: ${PAYMENT_SECRETS_KEY:-}
+      SHIPPING_SECRETS_KEY: ${SHIPPING_SECRETS_KEY:-}
+      CONTROL_PLANE_SECRETS_KEY: ${CONTROL_PLANE_SECRETS_KEY:-}
+      CONTROL_PLANE_SESSION_TTL_MINUTES: ${CONTROL_PLANE_SESSION_TTL_MINUTES:-60}
+      CONTROL_PLANE_ELEVATION_TTL_MINUTES: ${CONTROL_PLANE_ELEVATION_TTL_MINUTES:-10}
+      CONTROL_PLANE_LOCKOUT_THRESHOLD: ${CONTROL_PLANE_LOCKOUT_THRESHOLD:-5}
+      CONTROL_PLANE_LOCKOUT_SECONDS: ${CONTROL_PLANE_LOCKOUT_SECONDS:-1800}
       S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
       S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
       S3_REGION: ${S3_REGION:-us-east-1}
@@ -148,6 +158,8 @@ services:
       IDENTITY_DELIVERY_ENCRYPTION_KEY: ${IDENTITY_DELIVERY_ENCRYPTION_KEY:-change-me-delivery-encryption-local-only}
       IDENTITY_DELIVERY_FINGERPRINT_KEY: ${IDENTITY_DELIVERY_FINGERPRINT_KEY:-change-me-delivery-fingerprint-local-only}
       AFFILIATE_ATTRIBUTION_DAYS: ${AFFILIATE_ATTRIBUTION_DAYS:-30}
+      PAYMENT_SECRETS_KEY: ${PAYMENT_SECRETS_KEY:-}
+      SHIPPING_SECRETS_KEY: ${SHIPPING_SECRETS_KEY:-}
       S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
       S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
       S3_REGION: ${S3_REGION:-us-east-1}

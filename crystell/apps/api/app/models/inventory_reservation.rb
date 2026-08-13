@@ -3,6 +3,7 @@ class InventoryReservation < ApplicationRecord
   belongs_to :store
   belongs_to :inventory_location
   belongs_to :product_variant
+  has_one :checkout_inventory_reservation, dependent: :restrict_with_exception
 
   normalizes :reference_type, with: ->(value) { value&.strip&.presence }
   normalizes :idempotency_key, with: ->(value) { value.strip }
