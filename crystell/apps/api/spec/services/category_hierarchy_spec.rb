@@ -60,7 +60,7 @@ RSpec.describe "Category hierarchy" do
     end
   end
 
-  it "rejects self-parenting at PostgreSQL" do
+  it "rejects self-parenting at PostgreSQL even when Rails validations are bypassed" do
     TenantAccess.with(user: @owner, tenant_id: @tenant_id) do
       category = Category.create!(
         tenant_id: Current.tenant_id,
@@ -69,9 +69,16 @@ RSpec.describe "Category hierarchy" do
         slug: "self-#{unique}"
       )
 
+      connection = ApplicationRecord.connection
       expect do
-        category.update!(parent_id: category.id)
+        connection.execute(<<~SQL)
+          UPDATE categories
+          SET parent_id = #{connection.quote(category.id)}
+          WHERE id = #{connection.quote(category.id)}
+        SQL
       end.to raise_error(ActiveRecord::StatementInvalid, /category cannot be its own parent/i)
+
+      expect(category.reload.parent_id).to be_nil
     end
   end
 end
