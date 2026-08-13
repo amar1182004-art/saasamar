@@ -1,9 +1,12 @@
 require "rails_helper"
 require "pg"
 require "securerandom"
+require "json"
+require "openssl"
 
 RSpec.describe "Shipping foundation" do
   let(:password) { "Crystell-Shipping-Test-2026!" }
+  let(:webhook_secret) { "shipping-webhook-secret-#{unique}" }
   let(:unique) { SecureRandom.hex(8) }
 
   before do
@@ -42,6 +45,7 @@ RSpec.describe "Shipping foundation" do
         mode: "test",
         display_name: "Reference Shipping",
         credentials: { "base_rate_cents" => 4_000, "per_item_cents" => 750 },
+        webhook_secret: webhook_secret,
         public_config: {}
       )
     end
@@ -51,7 +55,7 @@ RSpec.describe "Shipping foundation" do
     tenant_id = @registration&.tenant_id
     if tenant_id.present? && @admin
       @admin.exec_params("UPDATE checkout_sessions SET selected_shipping_rate_quote_id = NULL WHERE tenant_id = $1::uuid", [tenant_id])
-      %w[shipment_events shipments shipping_rate_quotes shipping_provider_accounts].each do |table|
+      %w[shipping_webhook_events shipment_events shipments shipping_rate_quotes shipping_provider_accounts].each do |table|
         @admin.exec_params("DELETE FROM #{table} WHERE tenant_id = $1::uuid", [tenant_id])
       end
     end
@@ -64,6 +68,8 @@ RSpec.describe "Shipping foundation" do
       account = ShippingProviderAccount.find(@account.id)
       expect(account.credentials_ciphertext).not_to include("base_rate_cents")
       expect(account.credentials.fetch("base_rate_cents")).to eq(4_000)
+      expect(account.webhook_secret_ciphertext).not_to include(webhook_secret)
+      expect(account.webhook_secret).to eq(webhook_secret)
 
       quotes = Shipping::RateQuoter.call(
         checkout_session_id: @checkout.id,
@@ -138,6 +144,67 @@ RSpec.describe "Shipping foundation" do
       expect(second.status).to eq("cancelled")
       expect(ShipmentEvent.where(shipment_id: shipment.id, event_type: "shipment_cancelled").count).to eq(1)
     end
+  end
+
+  it "processes signed tracking webhooks idempotently and rejects conflicting replays" do
+    shipment = TenantAccess.with(user: @owner, tenant_id: @registration.tenant_id) do
+      quote = Shipping::RateQuoter.call(
+        checkout_session_id: @checkout.id,
+        shipping_provider_account_id: @account.id,
+        destination: { country_code: "EG", city: "Cairo" }
+      ).first
+      Shipping::QuoteSelector.call(
+        checkout_session_id: @checkout.id,
+        shipping_rate_quote_id: quote.id,
+        shipping_address: { country_code: "EG", city: "Cairo", address1: "Test Street" }
+      )
+      order = Checkout::OrderPlacer.call(checkout_session_id: @checkout.id)
+      Shipping::ShipmentCreator.call(order_id: order.id, idempotency_key: "shipment-tracking-#{unique}")
+    end
+
+    payload = {
+      event_id: "tracking-event-#{unique}",
+      event_type: "shipment.in_transit",
+      shipment_id: shipment.provider_shipment_id,
+      status: "in_transit",
+      tracking_number: shipment.tracking_number,
+      tracking_url: shipment.tracking_url,
+      occurred_at: Time.current.iso8601,
+      metadata: { checkpoint: "cairo_hub" }
+    }.to_json
+    signature = OpenSSL::HMAC.hexdigest("SHA256", webhook_secret, payload)
+    headers = { "X-Crystell-Shipping-Signature" => signature }
+
+    first = Shipping::WebhookReceiver.call(
+      endpoint_id: @account.webhook_endpoint_id,
+      raw_body: payload,
+      headers: headers
+    )
+    second = Shipping::WebhookReceiver.call(
+      endpoint_id: @account.webhook_endpoint_id,
+      raw_body: payload,
+      headers: headers
+    )
+
+    expect(first.duplicate).to be(false)
+    expect(second.duplicate).to be(true)
+
+    TenantAccess.with(user: @owner, tenant_id: @registration.tenant_id) do
+      expect(Shipment.find(shipment.id).status).to eq("in_transit")
+      expect(ShippingWebhookEvent.find(first.event.id).status).to eq("processed")
+      expect(ShipmentEvent.where(shipment_id: shipment.id, event_type: "shipment.in_transit").count).to eq(1)
+    end
+
+    conflicting_payload = JSON.parse(payload).merge("status" => "delivered").to_json
+    conflicting_signature = OpenSSL::HMAC.hexdigest("SHA256", webhook_secret, conflicting_payload)
+
+    expect {
+      Shipping::WebhookReceiver.call(
+        endpoint_id: @account.webhook_endpoint_id,
+        raw_body: conflicting_payload,
+        headers: { "X-Crystell-Shipping-Signature" => conflicting_signature }
+      )
+    }.to raise_error(Shipping::WebhookReceiver::ReplayConflictError)
   end
 
   it "rejects selecting a quote that belongs to another checkout" do
