@@ -44,6 +44,8 @@ module V1
 
       def complete
         media = ::Catalog::ProductMediaManager.complete(
+          store_id: params.require(:store_id),
+          product_id: params.require(:product_id),
           media_id: params.require(:id),
           width: params[:width],
           height: params[:height],
@@ -60,14 +62,22 @@ module V1
       end
 
       def preview
-        url = ::Catalog::ProductMediaManager.preview_url(media_id: params.require(:id))
+        url = ::Catalog::ProductMediaManager.preview_url(
+          store_id: params.require(:store_id),
+          product_id: params.require(:product_id),
+          media_id: params.require(:id)
+        )
         render json: { preview_url: url }
       rescue TenantPermission::ForbiddenError
         render json: { error: "permission_forbidden" }, status: :forbidden
       end
 
       def destroy
-        ::Catalog::ProductMediaManager.destroy(media_id: params.require(:id))
+        ::Catalog::ProductMediaManager.destroy(
+          store_id: params.require(:store_id),
+          product_id: params.require(:product_id),
+          media_id: params.require(:id)
+        )
         head :no_content
       rescue TenantPermission::ForbiddenError
         render json: { error: "permission_forbidden" }, status: :forbidden
