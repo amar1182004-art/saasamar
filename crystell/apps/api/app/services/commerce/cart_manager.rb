@@ -78,31 +78,41 @@ module Commerce
       require_tenant!
       store = Store.find(store_id)
       cart = Cart.find_by!(store_id: store.id, access_token_digest: digest(access_token))
-      expire_if_needed!(cart)
+      mark_expired_if_needed!(cart)
+      raise InvalidCartError, "cart has expired" if cart.status == "expired"
+
       cart
     end
 
     def self.with_locked_active_cart(store_id:, access_token:)
       require_tenant!
       result = nil
+      expired = false
+
       ApplicationRecord.transaction(requires_new: true) do
         store = Store.find_by!(id: store_id, status: "active")
         cart = Cart.lock.find_by!(store_id: store.id, access_token_digest: digest(access_token))
-        expire_if_needed!(cart)
-        raise InvalidCartError, "cart is not active" unless cart.status == "active"
+        mark_expired_if_needed!(cart)
 
-        result = yield cart
+        if cart.status == "expired"
+          expired = true
+        else
+          raise InvalidCartError, "cart is not active" unless cart.status == "active"
+          result = yield cart
+        end
       end
+
+      raise InvalidCartError, "cart has expired" if expired
+
       result
     end
 
-    def self.expire_if_needed!(cart)
+    def self.mark_expired_if_needed!(cart)
       return unless cart.expired? && cart.status == "active"
 
       cart.update!(status: "expired")
-      raise InvalidCartError, "cart has expired"
     end
-    private_class_method :expire_if_needed!
+    private_class_method :mark_expired_if_needed!
 
     def self.require_tenant!
       raise MissingTenantContextError, "tenant context is required" if Current.tenant_id.blank?

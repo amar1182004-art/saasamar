@@ -103,6 +103,23 @@ RSpec.describe "Checkout foundation" do
     end
   end
 
+  it "persists cart expiry even though the caller receives an error" do
+    TenantAccess.with(user: @owner_a, tenant_id: @tenant_a.tenant_id) do
+      created = Commerce::CartManager.create(store_id: @store_a.id, expires_at: 1.minute.ago)
+
+      expect do
+        Commerce::CartManager.add_item(
+          store_id: @store_a.id,
+          access_token: created.access_token,
+          product_variant_id: @variant_a.id,
+          quantity: 1
+        )
+      end.to raise_error(Commerce::CartManager::InvalidCartError, /expired/)
+
+      expect(Cart.find(created.cart.id).status).to eq("expired")
+    end
+  end
+
   it "rejects cross-store or cross-tenant variant injection" do
     TenantAccess.with(user: @owner_a, tenant_id: @tenant_a.tenant_id) do
       created = Commerce::CartManager.create(store_id: @store_a.id)
