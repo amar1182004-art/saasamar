@@ -127,10 +127,7 @@ challenge_token = mfa_login["challenge_token"]
 mfa_session = request(
     "POST",
     "/v1/auth/mfa/challenge",
-    {
-        "challenge_token": challenge_token,
-        "recovery_code": recovery_codes[0],
-    },
+    {"challenge_token": challenge_token, "recovery_code": recovery_codes[0]},
     expected=201,
 )
 mfa_session_token = mfa_session["token"]
@@ -147,19 +144,13 @@ second_challenge = second_mfa_login["challenge_token"]
 request(
     "POST",
     "/v1/auth/mfa/challenge",
-    {
-        "challenge_token": second_challenge,
-        "recovery_code": recovery_codes[0],
-    },
+    {"challenge_token": second_challenge, "recovery_code": recovery_codes[0]},
     expected=401,
 )
 second_session = request(
     "POST",
     "/v1/auth/mfa/challenge",
-    {
-        "challenge_token": second_challenge,
-        "recovery_code": recovery_codes[1],
-    },
+    {"challenge_token": second_challenge, "recovery_code": recovery_codes[1]},
     expected=201,
 )
 second_token = second_session["token"]
@@ -174,31 +165,53 @@ third_mfa_login = request(
 third_session = request(
     "POST",
     "/v1/auth/mfa/challenge",
-    {
-        "challenge_token": third_mfa_login["challenge_token"],
-        "recovery_code": recovery_codes[2],
-    },
+    {"challenge_token": third_mfa_login["challenge_token"], "recovery_code": recovery_codes[2]},
     expected=201,
 )
 third_token = third_session["token"]
 
-active_sessions = request(
-    "GET",
-    "/v1/security/sessions",
-    token=third_token,
-    expected=200,
-)["sessions"]
+active_sessions = request("GET", "/v1/security/sessions", token=third_token, expected=200)["sessions"]
 assert len(active_sessions) >= 2
 assert sum(1 for session in active_sessions if session["current"]) == 1
 
+request("DELETE", "/v1/security/sessions/others", token=third_token, expected=204)
+request("GET", "/v1/me", token=second_token, expected=401)
+request("GET", "/v1/me", token=third_token, expected=200)
+
+request(
+    "POST",
+    "/v1/auth/mfa/recovery-codes/regenerate",
+    {"password": "Wrong-Password", "recovery_code": recovery_codes[3]},
+    token=third_token,
+    expected=401,
+)
+regenerated = request(
+    "POST",
+    "/v1/auth/mfa/recovery-codes/regenerate",
+    {"password": PASSWORD, "recovery_code": recovery_codes[3]},
+    token=third_token,
+    expected=200,
+)["recovery_codes"]
+assert len(regenerated) == 10
+
 request(
     "DELETE",
-    "/v1/security/sessions/others",
+    "/v1/auth/mfa",
+    {"password": PASSWORD, "recovery_code": regenerated[0]},
     token=third_token,
     expected=204,
 )
-request("GET", "/v1/me", token=second_token, expected=401)
 request("GET", "/v1/me", token=third_token, expected=200)
+request("DELETE", "/v1/auth/session", token=third_token, expected=204)
+
+post_mfa_login = request(
+    "POST",
+    "/v1/auth/session",
+    {"email": EMAIL, "password": PASSWORD},
+    expected=201,
+)
+request("GET", "/v1/me", token=post_mfa_login["token"], expected=200)
+request("DELETE", "/v1/auth/session", token=post_mfa_login["token"], expected=204)
 
 throttle_email = f"missing-{UNIQUE}@example.test"
 for _ in range(8):
@@ -215,4 +228,4 @@ request(
     expected=429,
 )
 
-print("Identity, tenant isolation, throttling, MFA and session management smoke test passed")
+print("Identity, tenant isolation, throttling, MFA management and session security smoke test passed")
