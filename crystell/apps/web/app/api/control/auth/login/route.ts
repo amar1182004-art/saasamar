@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import {
-  clearCookie,
-  CONTROL_SESSION_COOKIE,
-  MERCHANT_SESSION_COOKIE,
-  setSessionCookie,
-} from "@/lib/server/auth-cookies";
+import { CONTROL_SESSION_COOKIE, setSessionCookie } from "@/lib/server/auth-cookies";
 import { crystellApi } from "@/lib/server/crystell-api";
 import {
   contentLengthExceeds,
@@ -50,7 +45,6 @@ export async function POST(request: NextRequest) {
       result.data.token,
       result.data.session?.expires_at,
     );
-    clearCookie(response, MERCHANT_SESSION_COOKIE);
     return response;
   }
 
