@@ -19,7 +19,7 @@ module Billing
       raise InvalidCouponError, "tenant coupon redemption limit reached" if tenant_redemptions >= coupon.per_tenant_limit
 
       discount = if coupon.discount_type == "percentage"
-        (subtotal_cents.to_i * coupon.percentage_basis_points / 10_000.0).floor
+        subtotal_cents.to_i * coupon.percentage_basis_points.to_i / 10_000
       else
         coupon.fixed_amount_cents
       end
