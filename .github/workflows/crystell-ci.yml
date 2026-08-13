@@ -9,7 +9,9 @@ on:
       - "crystell/**"
       - ".github/workflows/crystell-ci.yml"
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - agent/crystell-**
     paths:
       - "crystell/**"
       - ".github/workflows/crystell-ci.yml"
