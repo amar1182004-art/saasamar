@@ -89,7 +89,7 @@ jobs:
       - name: Verify persistent account lockout
         working-directory: crystell
         run: python3 scripts/lockout_smoke.py
-      - name: Verify tenant, identity, billing, catalog, inventory and checkout security boundaries
+      - name: Verify tenant, identity, billing, catalog, inventory, checkout and payment security boundaries
         working-directory: crystell
         run: |
           docker compose exec -T \
@@ -111,6 +111,7 @@ jobs:
               spec/services/storefront_configuration_spec.rb \
               spec/services/checkout_foundation_spec.rb \
               spec/services/checkout_inventory_allocator_spec.rb \
+              spec/services/payment_foundation_spec.rb \
               spec/requests/billing_permissions_spec.rb \
               spec/requests/catalog_inventory_permissions_spec.rb \
               spec/requests/storefront_permissions_spec.rb
