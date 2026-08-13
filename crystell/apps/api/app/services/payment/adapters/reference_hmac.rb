@@ -5,9 +5,6 @@ require "digest"
 module Payment
   module Adapters
     class ReferenceHmac < Base
-      class InvalidSignatureError < StandardError; end
-      class InvalidPayloadError < StandardError; end
-
       SIGNATURE_HEADER = "X-Crystell-Signature"
 
       def create_intent(payment_intent:)
@@ -26,11 +23,11 @@ module Payment
 
       def verify_webhook!(raw_body:, headers:)
         supplied = headers[SIGNATURE_HEADER] || headers[SIGNATURE_HEADER.downcase]
-        raise InvalidSignatureError, "payment webhook signature is missing" if supplied.blank?
+        raise Payment::Adapters::InvalidSignatureError, "payment webhook signature is missing" if supplied.blank?
 
         expected = OpenSSL::HMAC.hexdigest("SHA256", account.webhook_secret, raw_body)
         valid = supplied.bytesize == expected.bytesize && ActiveSupport::SecurityUtils.secure_compare(supplied, expected)
-        raise InvalidSignatureError, "payment webhook signature is invalid" unless valid
+        raise Payment::Adapters::InvalidSignatureError, "payment webhook signature is invalid" unless valid
 
         supplied
       end
@@ -48,7 +45,7 @@ module Payment
           metadata: payload.fetch("metadata", {})
         )
       rescue JSON::ParserError, KeyError, ArgumentError, TypeError => error
-        raise InvalidPayloadError, error.message
+        raise Payment::Adapters::InvalidPayloadError, error.message
       end
     end
   end
