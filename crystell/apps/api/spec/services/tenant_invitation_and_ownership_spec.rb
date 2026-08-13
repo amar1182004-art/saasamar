@@ -39,8 +39,10 @@ RSpec.describe "Tenant invitation and ownership security" do
 
     invitation = TenantAccess.with(user: owner, tenant_id: owner_registration.tenant_id) do |membership|
       expect(membership.role).to eq("owner")
+      expect(Current.membership).to eq(membership)
       Auth::TenantInvitationIssuer.call(email: invited_user.email, role: "admin")
     end
+    expect(Current.membership).to be_nil
 
     expect do
       Auth::TenantInvitationAcceptor.call(user: wrong_user, token: invitation.token)
@@ -62,9 +64,11 @@ RSpec.describe "Tenant invitation and ownership security" do
 
     TenantAccess.with(user: owner, tenant_id: owner_registration.tenant_id) do |membership|
       expect(membership.role).to eq("owner")
+      expect(Current.membership).to eq(membership)
       result = TenantOwnershipTransfer.call(target_membership_id: target_membership_id)
       expect(result.target_user_id).to eq(invited_user.id)
     end
+    expect(Current.membership).to be_nil
 
     TenantScope.with(owner_registration.tenant_id) do
       memberships = Membership.where(status: "active").order(:user_id).to_a
