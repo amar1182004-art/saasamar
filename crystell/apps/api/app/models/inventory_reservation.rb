@@ -13,7 +13,23 @@ class InventoryReservation < ApplicationRecord
 
   scope :active, -> { where(status: "active") }
 
+  after_create_commit :schedule_expiry_job, if: :expiry_scheduled?
+
   def expired?
     expires_at.present? && expires_at <= Time.current
+  end
+
+  private
+
+  def expiry_scheduled?
+    status == "active" && expires_at.present?
+  end
+
+  def schedule_expiry_job
+    if expires_at <= Time.current
+      ExpireInventoryReservationJob.perform_async(tenant_id, id)
+    else
+      ExpireInventoryReservationJob.perform_at(expires_at, tenant_id, id)
+    end
   end
 end
