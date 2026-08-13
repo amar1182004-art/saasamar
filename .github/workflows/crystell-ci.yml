@@ -18,7 +18,7 @@ jobs:
   validate-compose:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Validate Docker Compose
         working-directory: crystell
         run: docker compose --env-file .env.example config
@@ -26,13 +26,16 @@ jobs:
   web:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
       - name: Install web dependencies
         working-directory: crystell/apps/web
         run: npm install
+      - name: Audit production web dependencies
+        working-directory: crystell/apps/web
+        run: npm audit --omit=dev --audit-level=high
       - name: Build web
         working-directory: crystell/apps/web
         run: npm run build
@@ -43,7 +46,7 @@ jobs:
   api:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Build API container
         working-directory: crystell/apps/api
         run: docker build -t crystell-api:ci .
@@ -51,7 +54,7 @@ jobs:
   ai-service:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -69,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [validate-compose, web, api, ai-service]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Start full Crystell stack
         working-directory: crystell
         run: ACCOUNT_LOCKOUT_SECONDS=2 docker compose --env-file .env.example up -d --build
