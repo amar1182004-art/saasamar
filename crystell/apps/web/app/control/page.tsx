@@ -1,13 +1,6 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
-
-import { LogoutButton } from "@/components/auth/logout-button";
+import { ControlShell } from "@/components/control/control-shell";
+import { requireControlSession } from "@/lib/server/control-session";
 import { controlApi } from "@/lib/server/session-api";
-
-type ControlMe = {
-  user: { id: string; email: string; role: string };
-  session: { id: string; expires_at: string; elevated: boolean; privilege_elevated_until: string | null };
-};
 
 type SecurityResponse = {
   security: {
@@ -64,9 +57,7 @@ type ContentResponse = {
 };
 
 export default async function ControlPage() {
-  const meResult = await controlApi<ControlMe>("/control/v1/me");
-  if (!meResult || meResult.status === 401) redirect("/control/login");
-  if (!meResult.ok || !meResult.data) redirect("/control/login");
+  const me = await requireControlSession();
 
   const [securityResult, tenantsResult, auditResult, flagsResult, contentResult] = await Promise.all([
     controlApi<SecurityResponse>("/control/v1/security"),
@@ -76,7 +67,6 @@ export default async function ControlPage() {
     controlApi<ContentResponse>("/control/v1/content"),
   ]);
 
-  const me = meResult.data;
   const security = securityResult?.ok ? securityResult.data?.security : null;
   const tenants = tenantsResult?.ok ? tenantsResult.data?.tenants ?? [] : [];
   const audit = auditResult?.ok ? auditResult.data?.audit_events ?? [] : [];
@@ -84,41 +74,7 @@ export default async function ControlPage() {
   const content = contentResult?.ok ? contentResult.data?.content_documents ?? [] : [];
 
   return (
-    <main className="admin-layout control-layout">
-      <aside className="admin-sidebar control-sidebar">
-        <div>
-          <Link className="sidebar-brand" href="/">Crystell</Link>
-          <span className="sidebar-caption">Super Admin</span>
-        </div>
-        <nav className="sidebar-nav" aria-label="Control plane navigation">
-          <Link className="nav-item active" href="/control">Overview</Link>
-          <span className="nav-item muted-nav">Merchants</span>
-          <span className="nav-item muted-nav">Stores</span>
-          <span className="nav-item muted-nav">Plans</span>
-          <span className="nav-item muted-nav">Integrations</span>
-          <span className="nav-item muted-nav">Content</span>
-          <span className="nav-item muted-nav">Feature Flags</span>
-          <span className="nav-item muted-nav">Security</span>
-          <span className="nav-item muted-nav">Audit</span>
-        </nav>
-        <div className="sidebar-footer">
-          <span className="role-pill control-role">{me.user.role}</span>
-          <LogoutButton endpoint="/api/control/auth/logout" redirectTo="/control/login" />
-        </div>
-      </aside>
-
-      <section className="admin-main">
-        <header className="admin-topbar">
-          <div>
-            <span className="section-kicker">Control plane</span>
-            <h1>Platform overview</h1>
-            <p className="topbar-subtitle">{me.user.email}</p>
-          </div>
-          <div className={me.session.elevated ? "topbar-status elevated" : "topbar-status"}>
-            <span className="status-dot" />
-            {me.session.elevated ? "Privilege elevated" : "Standard privilege"}
-          </div>
-        </header>
+    <ControlShell active="overview" me={me} title="نظرة عامة على المنصة" description={me.user.email}>
 
         {security ? (
           <section className="metric-grid control-metrics">
@@ -213,8 +169,7 @@ export default async function ControlPage() {
             ) : <p className="panel-muted">لا توجد أحداث Audit متاحة.</p>}
           </article>
         </section>
-      </section>
-    </main>
+    </ControlShell>
   );
 }
 
