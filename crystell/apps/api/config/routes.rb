@@ -7,7 +7,7 @@ Rails.application.routes.draw do
       resource :session, only: %i[create destroy]
       resource :me, only: :show, controller: "me"
       resource :elevation, only: :create
-      resources :tenants, only: :index
+      resources :tenants, only: %i[index show]
     end
   end
 
