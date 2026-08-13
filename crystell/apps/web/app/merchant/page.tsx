@@ -1,26 +1,7 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
-
 import { LogoutButton } from "@/components/auth/logout-button";
+import { MerchantShell } from "@/components/merchant/merchant-shell";
+import { loadMerchantContext } from "@/lib/server/merchant-context";
 import { merchantApi } from "@/lib/server/session-api";
-
-type TenantDirectory = {
-  tenants: Array<{
-    id: string;
-    name: string;
-    slug: string;
-    status: string;
-    membership: { role: string; status: string };
-    stores_count: number;
-    accessible: boolean;
-  }>;
-};
-
-type StoreDirectory = {
-  tenant_id: string;
-  role: string;
-  stores: Array<{ id: string; name: string; slug: string; status: string }>;
-};
 
 type DashboardResponse = {
   dashboard: {
@@ -55,22 +36,12 @@ type MerchantPageProps = {
 
 export default async function MerchantPage({ searchParams }: MerchantPageProps) {
   const query = await searchParams;
-  const tenantResult = await merchantApi<TenantDirectory>("/v1/tenants");
-
-  if (!tenantResult || tenantResult.status === 401) redirect("/merchant/login");
-
-  const tenants = tenantResult.data?.tenants.filter((tenant) => tenant.accessible) ?? [];
-  const selectedTenant = tenants.find((tenant) => tenant.id === query.tenant) ?? tenants[0];
+  const context = await loadMerchantContext(query);
+  const { tenants, selectedTenant, stores, selectedStore, role } = context;
 
   if (!selectedTenant) {
     return <MerchantEmptyState />;
   }
-
-  const storesResult = await merchantApi<StoreDirectory>("/v1/stores", selectedTenant.id);
-  if (!storesResult || storesResult.status === 401) redirect("/merchant/login");
-
-  const stores = storesResult.data?.stores ?? [];
-  const selectedStore = stores.find((store) => store.id === query.store) ?? stores[0];
 
   const dashboardResult = selectedStore
     ? await merchantApi<DashboardResponse>(`/v1/stores/${encodeURIComponent(selectedStore.id)}/dashboard`, selectedTenant.id)
@@ -78,70 +49,16 @@ export default async function MerchantPage({ searchParams }: MerchantPageProps) 
   const dashboard = dashboardResult?.ok ? dashboardResult.data?.dashboard : null;
 
   return (
-    <main className="admin-layout">
-      <aside className="admin-sidebar merchant-sidebar">
-        <div>
-          <Link className="sidebar-brand" href="/">Crystell</Link>
-          <span className="sidebar-caption">Merchant Admin</span>
-        </div>
-        <nav className="sidebar-nav" aria-label="Merchant navigation">
-          <Link className="nav-item active" href="/merchant">الرئيسية</Link>
-          <span className="nav-item muted-nav">المنتجات</span>
-          <span className="nav-item muted-nav">الطلبات</span>
-          <span className="nav-item muted-nav">المخزون</span>
-          <span className="nav-item muted-nav">الشحن</span>
-          <span className="nav-item muted-nav">التصميم</span>
-          <span className="nav-item muted-nav">الفوترة</span>
-          <span className="nav-item muted-nav">الأمان</span>
-        </nav>
-        <div className="sidebar-footer">
-          <span className="role-pill">{storesResult.data?.role ?? selectedTenant.membership.role}</span>
-          <LogoutButton endpoint="/api/merchant/auth/logout" redirectTo="/merchant/login" />
-        </div>
-      </aside>
-
-      <section className="admin-main">
-        <header className="admin-topbar">
-          <div>
-            <span className="section-kicker">Merchant dashboard</span>
-            <h1>{selectedStore?.name ?? selectedTenant.name}</h1>
-          </div>
-          <div className="topbar-status"><span className="status-dot" /> الجلسة آمنة</div>
-        </header>
-
-        <div className="context-strip">
-          <div>
-            <span className="context-label">الشركة</span>
-            <div className="context-links">
-              {tenants.map((tenant) => (
-                <Link
-                  className={tenant.id === selectedTenant.id ? "context-chip selected" : "context-chip"}
-                  href={`/merchant?tenant=${encodeURIComponent(tenant.id)}`}
-                  key={tenant.id}
-                >
-                  {tenant.name}
-                </Link>
-              ))}
-            </div>
-          </div>
-          {stores.length > 0 ? (
-            <div>
-              <span className="context-label">المتجر</span>
-              <div className="context-links">
-                {stores.map((store) => (
-                  <Link
-                    className={store.id === selectedStore?.id ? "context-chip selected" : "context-chip"}
-                    href={`/merchant?tenant=${encodeURIComponent(selectedTenant.id)}&store=${encodeURIComponent(store.id)}`}
-                    key={store.id}
-                  >
-                    {store.name}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </div>
-
+    <MerchantShell
+      active="overview"
+      tenants={tenants}
+      selectedTenant={selectedTenant}
+      stores={stores}
+      selectedStore={selectedStore}
+      role={role}
+      title={selectedStore?.name ?? selectedTenant.name}
+      description="ملخص تشغيل المتجر والطلبات والمخزون."
+    >
         {!selectedStore ? (
           <section className="empty-panel">
             <strong>لا يوجد متجر داخل هذه الشركة حتى الآن.</strong>
@@ -155,8 +72,7 @@ export default async function MerchantPage({ searchParams }: MerchantPageProps) 
         ) : (
           <MerchantDashboard dashboard={dashboard} />
         )}
-      </section>
-    </main>
+    </MerchantShell>
   );
 }
 

@@ -9,7 +9,9 @@ on:
       - "crystell/**"
       - ".github/workflows/crystell-ci.yml"
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - agent/crystell-**
     paths:
       - "crystell/**"
       - ".github/workflows/crystell-ci.yml"
@@ -125,7 +127,8 @@ jobs:
               spec/requests/control_plane_tenant_directory_spec.rb \
               spec/requests/control_plane_audit_security_spec.rb \
               spec/requests/control_plane_content_feature_flags_spec.rb \
-              spec/requests/merchant_tenant_directory_spec.rb
+              spec/requests/merchant_tenant_directory_spec.rb \
+              spec/requests/communications_support_spec.rb
       - name: Print service logs on failure
         if: failure()
         working-directory: crystell
