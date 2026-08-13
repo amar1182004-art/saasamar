@@ -41,7 +41,7 @@ class AddControlPlaneTenantSupportOverview < ActiveRecord::Migration[8.0]
         FROM tenants tenant
         LEFT JOIN LATERAL (
           SELECT tenant_subscription.status, tenant_subscription.billing_plan_id
-          FROM tenant_subscriptions tenant_subscription
+          FROM subscriptions tenant_subscription
           WHERE tenant_subscription.tenant_id = tenant.id
           ORDER BY tenant_subscription.created_at DESC, tenant_subscription.id DESC
           LIMIT 1
