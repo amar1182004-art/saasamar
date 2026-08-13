@@ -79,7 +79,12 @@ RSpec.describe "Shipping event immutability" do
         ShipmentEvent.transaction(requires_new: true) do
           ShipmentEvent.find(@event_id).update!(message: "runtime mutation")
         end
-      }.to raise_error(ActiveRecord::StatementInvalid, /shipment_events_are_append_only/)
+      }.to raise_error(
+        ActiveRecord::StatementInvalid,
+        /(shipment_events_are_append_only|permission denied for table shipment_events)/
+      )
+
+      expect(ShipmentEvent.find(@event_id).message).not_to eq("runtime mutation")
     end
 
     @admin.exec_params("UPDATE shipment_events SET message = $1 WHERE id = $2::uuid", ["maintenance mutation", @event_id])
