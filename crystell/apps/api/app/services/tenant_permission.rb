@@ -17,6 +17,12 @@ class TenantPermission
       catalog.manage
       inventory.read
       inventory.manage
+      orders.read
+      orders.manage
+      payments.read
+      payments.manage
+      shipping.read
+      shipping.manage
     ],
     "admin" => %w[
       members.read
@@ -29,11 +35,20 @@ class TenantPermission
       catalog.manage
       inventory.read
       inventory.manage
+      orders.read
+      orders.manage
+      payments.read
+      payments.manage
+      shipping.read
+      shipping.manage
     ],
     "member" => %w[
       stores.read
       catalog.read
       inventory.read
+      orders.read
+      payments.read
+      shipping.read
     ]
   }.freeze
 
