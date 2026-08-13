@@ -12,11 +12,17 @@
 Exit criteria: all services boot locally, CI is green, no secrets are committed, and the repository structure is documented.
 
 ## Phase 1 — Identity and tenancy
-- Users, sessions, MFA-ready auth foundation.
-- Tenants, stores, memberships and roles.
-- Tenant context propagation.
-- PostgreSQL Row-Level Security.
-- Tenant boundary tests.
+- Users, sessions and hardened authentication.
+- Persistent login throttling/account lockout.
+- TOTP MFA, recovery codes and sensitive re-authentication.
+- Email verification and password-reset delivery primitives.
+- Tenants, stores, memberships, invitations and ownership transfer.
+- Tenant context propagation across requests, services, jobs, cache keys and storage namespaces.
+- PostgreSQL Row-Level Security with a restricted runtime database role.
+- Append-only security audit events.
+- Direct database and end-to-end tenant boundary tests.
+
+Exit criteria: authentication/MFA/session flows pass end-to-end tests; PostgreSQL rejects direct cross-tenant reads/writes under the runtime role; tenant context cannot leak across nested service scopes, jobs, Redis/cache namespaces or object-storage keys; identity delivery does not reveal account existence; production web dependencies have no known high-severity audit findings; and the complete Crystell CI matrix is green.
 
 ## Phase 2 — Plans and billing
 - Plans, entitlements and feature limits.
