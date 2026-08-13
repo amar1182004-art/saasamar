@@ -1,9 +1,5 @@
 module Payment
   module Adapters
-    class Error < StandardError; end
-    class InvalidSignatureError < Error; end
-    class InvalidPayloadError < Error; end
-
     class Base
       IntentResult = Data.define(:provider_intent_id, :status, :checkout_url, :provider_status, :metadata)
       WebhookResult = Data.define(:provider_event_id, :event_type, :provider_intent_id, :status, :amount_cents, :currency, :provider_transaction_id, :metadata)
