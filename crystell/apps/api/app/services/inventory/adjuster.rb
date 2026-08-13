@@ -17,16 +17,19 @@ module Inventory
       raise InvalidAdjustmentError, "idempotency key is required" if idempotency_key.blank?
       raise InvalidAdjustmentError, "reason is required" if reason.blank?
 
-      ledger = LedgerWriter.call(
-        store_id: store_id,
-        inventory_location_id: inventory_location_id,
-        product_variant_id: product_variant_id,
-        delta_on_hand: delta,
-        delta_reserved: 0,
-        reason: reason,
-        idempotency_key: idempotency_key,
-        metadata: metadata
-      )
+      ledger = nil
+      ApplicationRecord.transaction(requires_new: true) do
+        ledger = LedgerWriter.call(
+          store_id: store_id,
+          inventory_location_id: inventory_location_id,
+          product_variant_id: product_variant_id,
+          delta_on_hand: delta,
+          delta_reserved: 0,
+          reason: reason,
+          idempotency_key: idempotency_key,
+          metadata: metadata
+        )
+      end
 
       Result.new(
         recorded: ledger.recorded,
