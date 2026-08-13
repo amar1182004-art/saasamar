@@ -3,6 +3,7 @@ module Shipping
     class Base
       Rate = Data.define(:provider_quote_id, :service_code, :service_name, :amount_cents, :currency, :expires_at, :metadata)
       ShipmentResult = Data.define(:provider_shipment_id, :status, :tracking_number, :tracking_url, :label_url, :metadata)
+      WebhookResult = Data.define(:provider_event_id, :event_type, :provider_shipment_id, :status, :tracking_number, :tracking_url, :occurred_at, :message, :metadata)
 
       def initialize(account:)
         @account = account
@@ -17,6 +18,14 @@ module Shipping
       end
 
       def cancel_shipment(shipment:)
+        raise NotImplementedError
+      end
+
+      def verify_webhook!(raw_body:, headers:)
+        raise NotImplementedError
+      end
+
+      def parse_webhook(raw_body:)
         raise NotImplementedError
       end
 
