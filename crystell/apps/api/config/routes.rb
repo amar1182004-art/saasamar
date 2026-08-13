@@ -87,5 +87,9 @@ Rails.application.routes.draw do
     post "/stores/:store_id/inventory/reservations/:id/release", to: "inventory/reservations#release"
     post "/stores/:store_id/inventory/reservations/:id/consume", to: "inventory/reservations#consume"
     post "/stores/:store_id/inventory/reservations/:id/expire", to: "inventory/reservations#expire"
+
+    post "/stores/:store_id/shipping/quotes", to: "shipping/operations#quotes"
+    post "/stores/:store_id/shipping/select-quote", to: "shipping/operations#select_quote"
+    post "/stores/:store_id/shipping/shipments", to: "shipping/operations#create_shipment"
   end
 end
