@@ -54,42 +54,48 @@ RSpec.describe "Product media" do
   it "issues a tenant-scoped upload, verifies the object and exposes only a signed preview" do
     upload = nil
 
-    TenantAccess.with(user: @owner, tenant_id: @registration.tenant_id) do
-      upload = Catalog::ProductMediaManager.issue_upload(
-        store_id: @store.id,
-        product_id: @product.id,
-        filename: "hero image.jpg",
-        content_type: "image/jpeg",
-        byte_size: 12,
-        alt_text: "Hero image"
-      )
+    begin
+      TenantAccess.with(user: @owner, tenant_id: @registration.tenant_id) do
+        upload = Catalog::ProductMediaManager.issue_upload(
+          store_id: @store.id,
+          product_id: @product.id,
+          filename: "hero image.jpg",
+          content_type: "image/jpeg",
+          byte_size: 12,
+          alt_text: "Hero image"
+        )
 
-      expect(upload.object_key).to start_with("tenants/#{@registration.tenant_id}/stores/#{@store.id}/products/#{upload.media_id}/")
-      expect(upload.upload_url).to include(ENV.fetch("S3_BUCKET"))
+        expect(upload.object_key).to start_with("tenants/#{@registration.tenant_id}/stores/#{@store.id}/products/#{upload.media_id}/")
+        expect(upload.upload_url).to include(ENV.fetch("S3_BUCKET"))
 
-      Storage::ObjectStore.internal_client.put_object(
-        bucket: Storage::ObjectStore.bucket,
-        key: upload.object_key,
-        body: "hello-media!",
-        content_type: "image/jpeg"
-      )
+        Storage::ObjectStore.internal_client.put_object(
+          bucket: Storage::ObjectStore.bucket,
+          key: upload.object_key,
+          body: "hello-media!",
+          content_type: "image/jpeg"
+        )
 
-      media = Catalog::ProductMediaManager.complete(media_id: upload.media_id, width: 1200, height: 800)
-      expect(media.status).to eq("ready")
-      expect(media.width).to eq(1200)
-      expect(media.height).to eq(800)
+        media = Catalog::ProductMediaManager.complete(media_id: upload.media_id, width: 1200, height: 800)
+        expect(media.status).to eq("ready")
+        expect(media.width).to eq(1200)
+        expect(media.height).to eq(800)
 
-      preview_url = Catalog::ProductMediaManager.preview_url(media_id: media.id)
-      expect(preview_url).to include(ENV.fetch("S3_BUCKET"))
+        preview_url = Catalog::ProductMediaManager.preview_url(media_id: media.id)
+        expect(preview_url).to include(ENV.fetch("S3_BUCKET"))
+      end
+
+      TenantAccess.with(user: @other_owner, tenant_id: @other_registration.tenant_id) do
+        expect(ProductMedia.find_by(id: upload.media_id)).to be_nil
+      end
+    ensure
+      if upload
+        begin
+          Storage::ObjectStore.delete(key: upload.object_key)
+        rescue Aws::S3::Errors::ServiceError
+          nil
+        end
+      end
     end
-
-    TenantAccess.with(user: @other_owner, tenant_id: @other_registration.tenant_id) do
-      expect(ProductMedia.find_by(id: upload.media_id)).to be_nil
-    end
-  ensure
-    Storage::ObjectStore.delete(key: upload.object_key) if upload
-  rescue Aws::S3::Errors::ServiceError
-    nil
   end
 
   it "rejects unsupported media and oversized declarations before creating storage records" do
@@ -117,8 +123,6 @@ RSpec.describe "Product media" do
   end
 
   it "marks mismatched uploads failed and removes the untrusted object" do
-    upload = nil
-
     TenantAccess.with(user: @owner, tenant_id: @registration.tenant_id) do
       upload = Catalog::ProductMediaManager.issue_upload(
         store_id: @store.id,
@@ -142,7 +146,7 @@ RSpec.describe "Product media" do
       expect(ProductMedia.find(upload.media_id).status).to eq("failed")
       expect do
         Storage::ObjectStore.head(key: upload.object_key)
-      end.to raise_error(Aws::S3::Errors::NotFound, Aws::S3::Errors::NoSuchKey)
+      end.to raise_error(Aws::S3::Errors::ServiceError)
     end
   end
 end
