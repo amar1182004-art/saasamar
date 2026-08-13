@@ -14,7 +14,7 @@ module V1
           expires_at: parse_time(params[:expires_at]),
           reference_type: params[:reference_type],
           reference_id: params[:reference_id],
-          metadata: params.fetch(:metadata, {}).permit!.to_h
+          metadata: metadata_params
         )
 
         render_result(result, result.recorded ? :created : :ok)
@@ -65,6 +65,13 @@ module V1
             available: result.available
           }
         }, status: status
+      end
+
+      def metadata_params
+        value = params[:metadata]
+        return {} if value.blank?
+
+        value.permit!.to_h
       end
 
       def parse_time(value)
