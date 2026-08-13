@@ -4,6 +4,7 @@ Rails.application.routes.draw do
 
   namespace :v1 do
     post "/payment-webhooks/:endpoint_id", to: "payment_webhooks#create"
+    post "/shipping-webhooks/:endpoint_id", to: "shipping_webhooks#create"
 
     namespace :auth do
       resource :registration, only: :create
