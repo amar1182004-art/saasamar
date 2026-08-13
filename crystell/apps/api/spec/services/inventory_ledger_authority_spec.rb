@@ -68,7 +68,9 @@ RSpec.describe "Inventory ledger authority" do
 
       level = InventoryLevel.find_by!(product_variant_id: @variant.id, inventory_location_id: @location.id)
       expect do
-        level.update!(on_hand: 99)
+        ApplicationRecord.transaction(requires_new: true) do
+          level.update!(on_hand: 99)
+        end
       end.to raise_error(ActiveRecord::StatementInvalid, /permission denied/i)
 
       expect(level.reload.on_hand).to eq(5)
@@ -78,16 +80,18 @@ RSpec.describe "Inventory ledger authority" do
   it "does not allow the runtime role to forge ledger history directly" do
     TenantAccess.with(user: @owner, tenant_id: @tenant_id) do
       expect do
-        InventoryLedgerEntry.create!(
-          tenant_id: Current.tenant_id,
-          store_id: @store.id,
-          inventory_location_id: @location.id,
-          product_variant_id: @variant.id,
-          delta_on_hand: 100,
-          delta_reserved: 0,
-          reason: "forged",
-          idempotency_key: "forged-ledger-#{unique}"
-        )
+        ApplicationRecord.transaction(requires_new: true) do
+          InventoryLedgerEntry.create!(
+            tenant_id: Current.tenant_id,
+            store_id: @store.id,
+            inventory_location_id: @location.id,
+            product_variant_id: @variant.id,
+            delta_on_hand: 100,
+            delta_reserved: 0,
+            reason: "forged",
+            idempotency_key: "forged-ledger-#{unique}"
+          )
+        end
       end.to raise_error(ActiveRecord::StatementInvalid, /permission denied/i)
 
       expect(InventoryLedgerEntry.where(idempotency_key: "forged-ledger-#{unique}")).to be_empty
