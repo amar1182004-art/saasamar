@@ -91,5 +91,6 @@ Rails.application.routes.draw do
     post "/stores/:store_id/shipping/quotes", to: "shipping/operations#quotes"
     post "/stores/:store_id/shipping/select-quote", to: "shipping/operations#select_quote"
     post "/stores/:store_id/shipping/shipments", to: "shipping/operations#create_shipment"
+    post "/stores/:store_id/shipping/shipments/:id/cancel", to: "shipping/operations#cancel_shipment"
   end
 end
