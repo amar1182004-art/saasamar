@@ -1,6 +1,6 @@
 # Phase 5 status — Merchant and platform administration
 
-Status: implementation complete locally; the branch CI gate is required before Phase 5 is closed.
+Status: complete. The Phase 5 closure gate passed on commit `f791ba0dfd0a90b0b84e6ebb33daed88a3479b4f`.
 
 ## Merchant administration
 
@@ -24,16 +24,19 @@ Status: implementation complete locally; the branch CI gate is required before P
 - Server-side mutation actions authenticate independently; Rails remains authoritative for authorization.
 - Sensitive live changes require password + MFA privilege elevation and an auditable reason.
 
-## Local validation
+## Verification
 
 - Next.js / TypeScript typecheck: passed.
 - Next.js optimized production build: passed; all Phase 5 routes compiled.
 - `git diff --check`: passed.
-- Docker Compose and Rails regression execution are unavailable in the current local runtime because Docker and Ruby are not installed. The GitHub CI matrix remains the required closure gate.
+- Docker Compose validation and the Web, API and AI container builds passed.
+- Full-stack health/readiness, identity, MFA, session, tenant isolation and persistent account-lockout smoke tests passed.
+- Tenant, commerce, dashboard, CMS, feature-flag, audit and control-plane boundaries passed: 100 examples, 0 failures.
+- GitHub CI closure run: https://github.com/amar1182004-art/saasamar/actions/runs/31694487125
 
 ## Phase 5 exit gate
 
-Phase 5 can be marked complete after the current branch is published and its CI matrix passes:
+Phase 5 is complete because the published branch passed its full CI matrix:
 
 - production web dependency audit, typecheck and build;
 - Web, API and AI container builds;
@@ -42,4 +45,4 @@ Phase 5 can be marked complete after the current branch is published and its CI 
 - tenant, commerce and control-plane boundary specifications; and
 - CMS, feature-flag, audit, security and dashboard permission specifications.
 
-No claim is made that later phases are complete. Communications/support begins in Phase 6.
+No claim is made that later phases are complete. Phase 6 starts with communications and support.
