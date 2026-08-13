@@ -11,6 +11,5 @@ class BillingCommission < ApplicationRecord
   validates :status, inclusion: { in: %w[pending approved paid void] }
   validates :earned_at, presence: true
 
-  before_update { throw(:abort) }
   before_destroy { throw(:abort) }
 end
