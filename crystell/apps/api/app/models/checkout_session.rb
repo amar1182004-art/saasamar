@@ -3,6 +3,7 @@ class CheckoutSession < ApplicationRecord
   belongs_to :store
   belongs_to :cart
   has_many :checkout_line_items
+  has_many :checkout_inventory_reservations, dependent: :restrict_with_exception
   has_one :order
 
   validates :status, inclusion: { in: %w[open inventory_reserved payment_pending completed expired cancelled] }

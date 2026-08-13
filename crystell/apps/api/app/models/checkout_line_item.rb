@@ -4,6 +4,7 @@ class CheckoutLineItem < ApplicationRecord
   belongs_to :checkout_session
   belongs_to :product
   belongs_to :product_variant
+  has_many :checkout_inventory_reservations, dependent: :restrict_with_exception
 
   validates :product_title, :variant_title, presence: true
   validates :currency, format: { with: /\A[A-Z]{3}\z/ }
