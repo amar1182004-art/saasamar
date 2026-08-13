@@ -41,7 +41,7 @@ module Auth
     end
 
     def self.ensure_enabled!(user)
-      raise NotEnabledError, "MFA is not enabled" unless user.reload.mfa_enabled?
+      raise NotEnabledError, "MFA is not enabled" unless user.mfa_enabled?
     end
     private_class_method :ensure_enabled!
 
