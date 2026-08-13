@@ -116,6 +116,7 @@ jobs:
               spec/services/shipping_immutability_spec.rb \
               spec/services/control_plane_foundation_spec.rb \
               spec/services/control_plane_tenant_directory_spec.rb \
+              spec/services/control_plane_tenant_support_overview_spec.rb \
               spec/requests/billing_permissions_spec.rb \
               spec/requests/catalog_inventory_permissions_spec.rb \
               spec/requests/storefront_permissions_spec.rb \
