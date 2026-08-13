@@ -40,5 +40,50 @@ Rails.application.routes.draw do
 
     get "/me", to: "me#show"
     resources :stores, only: :index
+
+    get "/stores/:store_id/storefront", to: "storefront#show"
+    patch "/stores/:store_id/storefront", to: "storefront#update"
+    put "/stores/:store_id/storefront", to: "storefront#update"
+    post "/stores/:store_id/storefront/publish", to: "storefront#publish"
+
+    get "/stores/:store_id/catalog/products", to: "catalog/products#index"
+    post "/stores/:store_id/catalog/products", to: "catalog/products#create"
+    get "/stores/:store_id/catalog/products/:id", to: "catalog/products#show"
+    patch "/stores/:store_id/catalog/products/:id", to: "catalog/products#update"
+    put "/stores/:store_id/catalog/products/:id", to: "catalog/products#update"
+    delete "/stores/:store_id/catalog/products/:id", to: "catalog/products#destroy"
+
+    post "/stores/:store_id/catalog/products/:product_id/variants", to: "catalog/variants#create"
+    patch "/stores/:store_id/catalog/products/:product_id/variants/:id", to: "catalog/variants#update"
+    put "/stores/:store_id/catalog/products/:product_id/variants/:id", to: "catalog/variants#update"
+    delete "/stores/:store_id/catalog/products/:product_id/variants/:id", to: "catalog/variants#destroy"
+
+    get "/stores/:store_id/catalog/products/:product_id/media", to: "catalog/media#index"
+    post "/stores/:store_id/catalog/products/:product_id/media", to: "catalog/media#create"
+    post "/stores/:store_id/catalog/products/:product_id/media/:id/complete", to: "catalog/media#complete"
+    get "/stores/:store_id/catalog/products/:product_id/media/:id/preview", to: "catalog/media#preview"
+    delete "/stores/:store_id/catalog/products/:product_id/media/:id", to: "catalog/media#destroy"
+
+    get "/stores/:store_id/catalog/categories", to: "catalog/categories#index"
+    post "/stores/:store_id/catalog/categories", to: "catalog/categories#create"
+    patch "/stores/:store_id/catalog/categories/:id", to: "catalog/categories#update"
+    put "/stores/:store_id/catalog/categories/:id", to: "catalog/categories#update"
+    delete "/stores/:store_id/catalog/categories/:id", to: "catalog/categories#destroy"
+
+    post "/stores/:store_id/catalog/products/:product_id/category_assignments", to: "catalog/category_assignments#create"
+    delete "/stores/:store_id/catalog/products/:product_id/category_assignments/:id", to: "catalog/category_assignments#destroy"
+
+    get "/stores/:store_id/inventory/locations", to: "inventory/locations#index"
+    post "/stores/:store_id/inventory/locations", to: "inventory/locations#create"
+    patch "/stores/:store_id/inventory/locations/:id", to: "inventory/locations#update"
+    put "/stores/:store_id/inventory/locations/:id", to: "inventory/locations#update"
+    delete "/stores/:store_id/inventory/locations/:id", to: "inventory/locations#destroy"
+
+    get "/stores/:store_id/inventory/levels", to: "inventory/levels#index"
+    post "/stores/:store_id/inventory/adjustments", to: "inventory/adjustments#create"
+    post "/stores/:store_id/inventory/reservations", to: "inventory/reservations#create"
+    post "/stores/:store_id/inventory/reservations/:id/release", to: "inventory/reservations#release"
+    post "/stores/:store_id/inventory/reservations/:id/consume", to: "inventory/reservations#consume"
+    post "/stores/:store_id/inventory/reservations/:id/expire", to: "inventory/reservations#expire"
   end
 end

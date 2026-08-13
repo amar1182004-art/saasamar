@@ -3,28 +3,38 @@ require "rails_helper"
 RSpec.describe TenantPermission do
   MembershipStub = Struct.new(:role, :status)
 
-  it "gives owners ownership and full billing permissions" do
+  it "gives owners ownership, billing, catalog and inventory management permissions" do
     membership = MembershipStub.new("owner", "active")
 
     expect(described_class.allowed?(membership, "ownership.transfer")).to be(true)
     expect(described_class.allowed?(membership, "billing.read")).to be(true)
     expect(described_class.allowed?(membership, "billing.manage")).to be(true)
+    expect(described_class.allowed?(membership, "catalog.read")).to be(true)
+    expect(described_class.allowed?(membership, "catalog.manage")).to be(true)
+    expect(described_class.allowed?(membership, "inventory.read")).to be(true)
+    expect(described_class.allowed?(membership, "inventory.manage")).to be(true)
   end
 
-  it "allows admins to read billing without changing subscriptions" do
+  it "allows admins to manage catalog and inventory without changing subscriptions" do
     membership = MembershipStub.new("admin", "active")
 
     expect(described_class.allowed?(membership, "stores.manage")).to be(true)
     expect(described_class.allowed?(membership, "billing.read")).to be(true)
+    expect(described_class.allowed?(membership, "catalog.manage")).to be(true)
+    expect(described_class.allowed?(membership, "inventory.manage")).to be(true)
     expect(described_class.allowed?(membership, "ownership.transfer")).to be(false)
     expect(described_class.allowed?(membership, "billing.manage")).to be(false)
   end
 
-  it "limits members to store reads" do
+  it "limits members to read-only store, catalog and inventory access" do
     membership = MembershipStub.new("member", "active")
 
     expect(described_class.allowed?(membership, "stores.read")).to be(true)
+    expect(described_class.allowed?(membership, "catalog.read")).to be(true)
+    expect(described_class.allowed?(membership, "inventory.read")).to be(true)
     expect(described_class.allowed?(membership, "stores.manage")).to be(false)
+    expect(described_class.allowed?(membership, "catalog.manage")).to be(false)
+    expect(described_class.allowed?(membership, "inventory.manage")).to be(false)
     expect(described_class.allowed?(membership, "members.invite")).to be(false)
     expect(described_class.allowed?(membership, "billing.read")).to be(false)
     expect(described_class.allowed?(membership, "billing.manage")).to be(false)
