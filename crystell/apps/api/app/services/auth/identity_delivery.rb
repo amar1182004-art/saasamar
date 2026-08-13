@@ -1,5 +1,4 @@
 require "digest"
-require "openssl"
 require "securerandom"
 
 module Auth
@@ -17,7 +16,7 @@ module Auth
       token = SecureRandom.urlsafe_base64(48)
       token_digest = Digest::SHA256.hexdigest(token)
       expires_at = ttl.from_now
-      destination_fingerprint = fingerprint(normalized_email)
+      destination_fingerprint = DeliveryFingerprint.call(normalized_email)
       encrypted_payload = IdentityDeliveryCipher.encrypt(
         "email" => normalized_email,
         "purpose" => purpose.to_s,
@@ -53,12 +52,6 @@ module Auth
       queued = ActiveModel::Type::Boolean.new.cast(row&.fetch("queued", false))
       Result.new(queued: queued, token: queued ? token : nil, expires_at: queued ? expires_at : nil)
     end
-
-    def self.fingerprint(email)
-      key = ENV.fetch("IDENTITY_DELIVERY_FINGERPRINT_KEY", ENV.fetch("SECRET_KEY_BASE"))
-      OpenSSL::HMAC.hexdigest("SHA256", key, email)
-    end
-    private_class_method :fingerprint
 
     def self.string_attribute(name, value)
       ActiveRecord::Relation::QueryAttribute.new(name, value, ActiveRecord::Type::String.new)
