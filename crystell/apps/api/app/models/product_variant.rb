@@ -6,6 +6,7 @@ class ProductVariant < ApplicationRecord
   has_many :inventory_levels, dependent: :restrict_with_exception
   has_many :inventory_ledger_entries, dependent: :restrict_with_exception
   has_many :inventory_reservations, dependent: :restrict_with_exception
+  has_many :product_media, class_name: "ProductMedia", dependent: :restrict_with_exception
 
   normalizes :title, with: ->(value) { value.strip }
   normalizes :sku, with: ->(value) { value&.strip&.presence }
