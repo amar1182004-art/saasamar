@@ -101,7 +101,8 @@ jobs:
               spec/services/identity_delivery_spec.rb \
               spec/services/tenant_invitation_and_ownership_spec.rb \
               spec/services/tenant_resource_boundaries_spec.rb \
-              spec/services/billing_foundation_spec.rb
+              spec/services/billing_foundation_spec.rb \
+              spec/services/billing_promotions_spec.rb
       - name: Print service logs on failure
         if: failure()
         working-directory: crystell
