@@ -7,6 +7,8 @@ module ControlPlane
         platform.read
         tenant.read
         audit.read
+        content.read
+        feature_flags.read
       ],
       "operator" => %w[
         platform.read
@@ -15,6 +17,8 @@ module ControlPlane
         orders.read
         billing.read
         audit.read
+        content.read
+        feature_flags.read
       ],
       "admin" => %w[
         platform.read
@@ -28,6 +32,10 @@ module ControlPlane
         billing.manage
         audit.read
         security.read
+        content.read
+        content.manage
+        feature_flags.read
+        feature_flags.manage
       ],
       "owner" => ["*"]
     }.freeze
