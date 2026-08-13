@@ -64,6 +64,7 @@ Rails.application.routes.draw do
     post "/tenant/ownership-transfer", to: "tenant_ownership#transfer"
 
     get "/me", to: "me#show"
+    resources :tenants, only: :index
     resources :stores, only: :index
     get "/stores/:store_id/dashboard", to: "dashboard#show"
 
