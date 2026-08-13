@@ -3,8 +3,12 @@ class ShippingProviderAccount < ApplicationRecord
   belongs_to :store
   has_many :shipping_rate_quotes, dependent: :restrict_with_exception
   has_many :shipments, dependent: :restrict_with_exception
+  has_many :shipping_webhook_events, dependent: :restrict_with_exception
 
   CREDENTIAL_PURPOSE = "crystell:shipping-provider-credentials:v1"
+  WEBHOOK_SECRET_PURPOSE = "crystell:shipping-provider-webhook-secret:v1"
+
+  before_validation :ensure_webhook_endpoint_id, on: :create
 
   normalizes :provider_key, with: ->(value) { value&.strip&.downcase }
   normalizes :display_name, with: ->(value) { value&.strip&.presence }
@@ -12,7 +16,7 @@ class ShippingProviderAccount < ApplicationRecord
   validates :provider_key, presence: true, format: { with: /\A[a-z0-9][a-z0-9_.-]{1,63}\z/ }
   validates :mode, inclusion: { in: %w[test live] }
   validates :status, inclusion: { in: %w[active disabled] }
-  validates :credentials_ciphertext, presence: true
+  validates :credentials_ciphertext, :webhook_endpoint_id, presence: true
 
   scope :active, -> { where(status: "active") }
 
@@ -25,5 +29,24 @@ class ShippingProviderAccount < ApplicationRecord
     raise ArgumentError, "credentials must be an object" unless object.is_a?(Hash)
 
     self.credentials_ciphertext = Shipping::CredentialVault.encrypt(object, purpose: CREDENTIAL_PURPOSE)
+  end
+
+  def webhook_secret
+    return if webhook_secret_ciphertext.blank?
+
+    Shipping::CredentialVault.decrypt(webhook_secret_ciphertext, purpose: WEBHOOK_SECRET_PURPOSE)
+  end
+
+  def webhook_secret=(value)
+    secret = value.to_s
+    raise ArgumentError, "webhook secret is required" if secret.blank?
+
+    self.webhook_secret_ciphertext = Shipping::CredentialVault.encrypt(secret, purpose: WEBHOOK_SECRET_PURPOSE)
+  end
+
+  private
+
+  def ensure_webhook_endpoint_id
+    self.webhook_endpoint_id ||= SecureRandom.uuid
   end
 end
