@@ -7,6 +7,8 @@ class PaymentProviderAccount < ApplicationRecord
   CREDENTIAL_PURPOSE = "crystell:payment-provider-credentials:v1"
   WEBHOOK_SECRET_PURPOSE = "crystell:payment-provider-webhook-secret:v1"
 
+  before_validation :ensure_webhook_endpoint_id, on: :create
+
   normalizes :provider_key, with: ->(value) { value&.strip&.downcase }
   normalizes :display_name, with: ->(value) { value&.strip&.presence }
 
@@ -41,5 +43,11 @@ class PaymentProviderAccount < ApplicationRecord
     raise ArgumentError, "webhook secret is required" if secret.blank?
 
     self.webhook_secret_ciphertext = Payment::CredentialVault.encrypt(secret, purpose: WEBHOOK_SECRET_PURPOSE)
+  end
+
+  private
+
+  def ensure_webhook_endpoint_id
+    self.webhook_endpoint_id ||= SecureRandom.uuid
   end
 end
