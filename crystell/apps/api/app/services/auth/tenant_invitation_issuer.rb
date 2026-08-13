@@ -22,6 +22,17 @@ module Auth
         raise ValidationError, "cannot invite yourself"
       end
 
+      connection = ActiveRecord::Base.connection
+      existing_member = connection.exec_query(
+        "SELECT crystell.tenant_has_member_email($1::text) AS exists",
+        "TenantHasMemberEmail",
+        [string_attribute("email", email)]
+      ).first
+
+      if ActiveModel::Type::Boolean.new.cast(existing_member&.fetch("exists", false))
+        raise ConflictError, "user is already a tenant member"
+      end
+
       token = SecureRandom.urlsafe_base64(48)
       token_digest = Digest::SHA256.hexdigest(token)
       expires_at = ENV.fetch("TENANT_INVITATION_TTL_HOURS", "168").to_i.hours.from_now
@@ -45,7 +56,6 @@ module Auth
           "expires_at" => expires_at.iso8601
         )
 
-        connection = ActiveRecord::Base.connection
         connection.exec_query(
           "SELECT crystell.enqueue_tenant_invitation_delivery($1::text, $2::text) AS outbox_id",
           "EnqueueTenantInvitationDelivery",
