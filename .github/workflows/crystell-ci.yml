@@ -27,15 +27,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
+          package-manager-cache: false
       - name: Install web dependencies
         working-directory: crystell/apps/web
         run: npm install
       - name: Audit production web dependencies
         working-directory: crystell/apps/web
         run: npm audit --omit=dev --audit-level=high
+      - name: Type-check web
+        working-directory: crystell/apps/web
+        run: npm run typecheck
       - name: Build web
         working-directory: crystell/apps/web
         run: npm run build
