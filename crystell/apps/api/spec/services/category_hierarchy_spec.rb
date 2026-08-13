@@ -51,7 +51,9 @@ RSpec.describe "Category hierarchy" do
       )
 
       expect do
-        root.update!(parent_id: grandchild.id)
+        ApplicationRecord.transaction(requires_new: true) do
+          root.update!(parent_id: grandchild.id)
+        end
       end.to raise_error(ActiveRecord::StatementInvalid, /category hierarchy cycle detected/i)
 
       expect(root.reload.parent_id).to be_nil
@@ -71,11 +73,13 @@ RSpec.describe "Category hierarchy" do
 
       connection = ApplicationRecord.connection
       expect do
-        connection.execute(<<~SQL)
-          UPDATE categories
-          SET parent_id = #{connection.quote(category.id)}
-          WHERE id = #{connection.quote(category.id)}
-        SQL
+        ApplicationRecord.transaction(requires_new: true) do
+          connection.execute(<<~SQL)
+            UPDATE categories
+            SET parent_id = #{connection.quote(category.id)}
+            WHERE id = #{connection.quote(category.id)}
+          SQL
+        end
       end.to raise_error(ActiveRecord::StatementInvalid, /category cannot be its own parent/i)
 
       expect(category.reload.parent_id).to be_nil
