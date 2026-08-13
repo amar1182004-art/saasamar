@@ -260,7 +260,10 @@ RSpec.describe "Payment foundation" do
         ApplicationRecord.transaction(requires_new: true) do
           transaction.update!(status: "failed")
         end
-      end.to raise_error(ActiveRecord::StatementInvalid, /payment_transactions_are_append_only/)
+      end.to raise_error(
+        ActiveRecord::StatementInvalid,
+        /permission denied for table payment_transactions|payment_transactions_are_append_only/
+      )
     end
   end
 end
