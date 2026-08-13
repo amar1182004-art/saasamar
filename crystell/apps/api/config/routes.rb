@@ -2,6 +2,14 @@ Rails.application.routes.draw do
   get "/health", to: "health#show"
   get "/ready", to: "readiness#show"
 
+  namespace :control do
+    namespace :v1 do
+      resource :session, only: %i[create destroy]
+      resource :me, only: :show, controller: "me"
+      resource :elevation, only: :create
+    end
+  end
+
   namespace :v1 do
     post "/payment-webhooks/:endpoint_id", to: "payment_webhooks#create"
     post "/shipping-webhooks/:endpoint_id", to: "shipping_webhooks#create"
